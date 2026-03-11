@@ -5,8 +5,8 @@ This repo contains a Claude Code skill and subagent for automating WordPress plu
 ## Structure
 
 - `SKILL.md` — The skill definition. Handles setup, screenshot capture, gallery generation, and Figma import.
-- `agents/ux-reviewer.md` — Subagent dispatched after screenshot capture. Analyzes screenshots through the user's review objective and returns structured annotations for the gallery. Runs without Bash (reads images, writes JSON) so it needs no special permissions.
-- `agents/ux-comparator.md` — Subagent dispatched after all ux-reviewer agents complete (multi-plugin reviews only). Receives each plugin's annotations and metadata, produces a structured comparison table with per-dimension ratings and a verdict. Only used when the user requests a comparison.
+- `agents/ux-reviewer.md` — Prompt template for the UX review subagent. Dispatched as `subagent_type: "general-purpose"` with this file's content inlined into the prompt. Analyzes screenshots through the user's review objective and returns structured annotations with a status (`DONE`, `DONE_WITH_CONCERNS`, `BLOCKED`). Runs without Bash (reads images, writes JSON) so it needs no special permissions.
+- `agents/ux-comparator.md` — Prompt template for the comparison subagent. Dispatched as `subagent_type: "general-purpose"` (with `model: "sonnet"` since it's text-only reasoning). Receives each plugin's annotations and metadata, produces a structured comparison table with per-dimension ratings and a verdict. Only used when the user requests a comparison.
 
 ## Environment Paths
 

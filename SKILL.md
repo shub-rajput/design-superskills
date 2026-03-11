@@ -303,6 +303,27 @@ Extract the target plugin's version, author, and description from the output.
 - Gallery header (`<p>` tag under `<h1>`: "by Author &bull; vX.X &bull; Description")
 - Subagent prompt context (passed to both ux-reviewer and ux-comparator)
 
+## Step 5c: Filter Pages by Objective (Custom Objectives Only)
+
+**Skip this step if the objective is "General review."**
+
+When the user provided a specific objective (first-time UX, monetization audit, or custom text), review the page list from Step 5 and **remove any pages that are NOT directly part of the stated objective.**
+
+For example, if the objective is "setting up mailer connections":
+- **Keep:** onboarding/welcome screens, mailer selection, mailer configuration forms, connection testing, success/failure states
+- **Remove:** alerts, reporting, tools, about pages, miscellaneous settings, email logs, smart routing
+
+For "first-time user experience":
+- **Keep:** onboarding, setup wizard, first-run screens, empty states, dashboard (first view), core feature entry point
+- **Remove:** advanced settings, tools, addons, about pages
+
+For "upsell & monetization audit":
+- **Keep:** all pages — upsells can appear anywhere. But only annotate upsell-related elements.
+
+**Show the filtered list in the Step 2 summary** so the user can confirm scope before capture begins.
+
+**Screenshot count guidance:** For custom objectives, aim for **3-5 screenshots per section**. Each screenshot should show a distinct step in the user's journey, not every variation of the same screen. For example, when reviewing mailer setup, capture 2-3 representative mailer configs (one API-key provider, one OAuth provider, one SMTP provider) rather than all available options.
+
 ## Step 6: Handle Interruptions
 
 Dismiss these BEFORE taking screenshots:
@@ -341,31 +362,104 @@ agent-browser --session $SESSION screenshot screenshots/$PLUGIN_SLUG/XX-descript
 
 **If the user specified focus areas**, prioritize those screens and add more detail (e.g., capture different states, empty vs populated, error states).
 
+**Journey notes:** As you capture each screenshot, write a brief journey note describing what you observed while navigating to and interacting with that screen. These notes capture experiential context that static screenshots cannot — the subagent hasn't used the product, so these notes are its only window into the navigation experience. Record things like:
+- How many clicks/steps to reach this screen
+- Modals, banners, or interruptions you had to dismiss
+- Elements that didn't work as expected (broken clicks, JS workarounds needed)
+- Missing feedback (no success message after save, no loading indicator)
+- Confusing navigation (tab label doesn't match URL, feature buried in unexpected place)
+- Load time issues or rendering problems
+- What you expected to see vs. what actually appeared
+
+Keep each note to 1-3 sentences. Factual observations, not analysis — the subagent does the analysis.
+
+## Step 7a: Write Review Brief
+
+After all screenshots are captured for a plugin, write a **review brief** markdown file that consolidates everything the subagent needs. This file is the primary context document — it pairs the screenshots with the experiential knowledge you gained from navigating the product.
+
+**File:** `screenshots/<plugin-slug>/review-brief.md`
+
+**Template:**
+
+```markdown
+# Review Brief: <Plugin Name> v<Version>
+
+## Objective
+<Exact objective text from Step 2>
+
+## Annotation Depth
+<"light" or "impact-opportunity">
+
+## Plugin Metadata
+- **Name:** <name>
+- **Author:** <author>
+- **Version:** <version>
+- **Description:** <description>
+
+## Environment
+- **Type:** <local or remote>
+- **Site URL:** <url>
+
+## Navigation Structure (Full)
+<Numbered list of ALL pages/tabs discovered in Step 5>
+
+## Filtered Scope
+<If Step 5c filtered pages, list only the pages kept and briefly note why others were excluded. If "General review", write "No filtering — all pages captured.">
+
+## Screenshots & Journey Notes
+
+### 01-mailer-selection.png
+**Screen:** <What this screen shows>
+**Journey:** <1-3 sentences of what you observed navigating to/interacting with this screen>
+
+### 02-sendgrid-config.png
+**Screen:** <What this screen shows>
+**Journey:** <1-3 sentences>
+
+<!-- Continue for every screenshot -->
+```
+
+**This file serves three purposes:**
+1. **Subagent context** — the subagent reads this before analyzing screenshots, so it understands the navigation experience
+2. **User review** — the user can skim it to verify scope before the subagent runs
+3. **Audit trail** — documents what was captured and why, useful if the review is revisited later
+
 ## Step 7b: UX Review (Subagent)
 
-After all screenshots are captured for a plugin, dispatch the **ux-reviewer** subagent to analyze them. Do NOT analyze screenshots yourself — delegate to the agent.
+After all screenshots are captured for a plugin, dispatch a **general-purpose** subagent to analyze them using the ux-reviewer prompt template. Do NOT analyze screenshots yourself — delegate to the agent.
 
 **Before dispatching, inform the user:**
 
 > Dispatching UX review agents now. No action needed on your side — I'll check in when the galleries are ready for your approval.
 
 **Dispatch with the Agent tool:**
-- `subagent_type`: Use the `ux-reviewer` agent
-- Provide in the prompt:
-  1. **Screenshot file paths** — list every PNG captured in Step 7
-  2. **Review objective** — the exact objective from Step 2 (general, first-time UX, monetization audit, or custom text)
-  3. **Annotation depth** — "light" or "impact-opportunity" from Step 2
-  4. **Plugin metadata** — name, version, author, description, and what the plugin does (from Step 5b). This context is essential — without it the agent can't evaluate the UI in the right context.
-  5. **Page list** — the full list of pages/tabs discovered in Step 5, so the agent understands the plugin's navigation structure even for screens it doesn't see
-  6. **Environment** — local or remote, and the site URL (helps the agent understand the context)
+- `subagent_type`: `"general-purpose"` (there is no custom ux-reviewer type)
+- **Prompt:** Paste the full content of `agents/ux-reviewer.md` into the prompt, then tell the agent to:
+  1. **Read the review brief** at `screenshots/<plugin-slug>/review-brief.md` (written in Step 7a) — this contains the objective, metadata, navigation structure, and journey notes per screenshot
+  2. **Read each screenshot PNG** listed in the review brief using the Read tool
+  3. **Analyze and return annotations** per the ux-reviewer instructions
 
-**For multi-plugin reviews:** Dispatch one ux-reviewer agent per plugin in parallel. Each agent analyzes one plugin's screenshots independently.
+The review brief is the subagent's primary context document. It contains everything the subagent needs to understand the plugin beyond what the screenshots show — the navigation experience, the objective, the scope decisions, and per-screen observations from actually using the product.
+
+**For multi-plugin reviews:** Dispatch one agent per plugin in parallel. Each agent analyzes one plugin's screenshots independently.
 
 The agent returns:
+- **Status:** `DONE | DONE_WITH_CONCERNS | BLOCKED` (see agents/ux-reviewer.md for details)
 - A JSON array of screenshots with annotations, grouped into sections
 - An overall summary for the gallery banner (3-5 bullet executive summary covering: key strengths, key weaknesses, and recommended priorities)
 
-Use this output to populate annotations in the HTML gallery (Step 8).
+**Handling agent status:**
+- **DONE:** Proceed to validation below.
+- **DONE_WITH_CONCERNS:** Read the concerns. If screenshots appeared irrelevant to the objective, that's a signal Step 5c filtering was incomplete — note it but proceed. If the agent couldn't read images, re-dispatch.
+- **BLOCKED:** The agent couldn't complete analysis. Check if screenshots are readable (Read the PNGs yourself). If images are fine, re-dispatch with more context.
+
+**Post-subagent validation:** Before using the output, verify:
+1. The JSON covers ALL screenshots that were captured (no missing entries)
+2. Annotations are relevant to the stated objective (spot-check 2-3 entries)
+3. Section groupings make sense for the gallery layout
+4. If the objective was custom and annotations reference off-topic screens, remove those entries before building the gallery
+
+Use the validated output to populate annotations in the HTML gallery (Step 8).
 
 **If annotation depth is "none":** Skip this step entirely — go straight to Step 8 with screenshots only.
 
@@ -373,14 +467,16 @@ Use this output to populate annotations in the HTML gallery (Step 8).
 
 **Only run this step if the user requested a comparison in Step 2.**
 
-After ALL ux-reviewer agents have completed, dispatch the **ux-comparator** subagent.
+After ALL ux-reviewer agents have completed, dispatch a **general-purpose** subagent using the ux-comparator prompt template. This agent does text reasoning on structured JSON — no vision needed, so it can use a faster model.
 
 **Dispatch with the Agent tool:**
-- `subagent_type`: Use the `ux-comparator` agent
+- `subagent_type`: `"general-purpose"` (there is no custom ux-comparator type)
+- `model`: `"sonnet"` (comparator is text-only reasoning on structured JSON — doesn't need the most capable model)
+- **Prompt:** Paste the full content of `agents/ux-comparator.md` into the prompt, followed by all context below. Do NOT tell the agent to read the file — inline everything.
 - Provide in the prompt:
-  1. **All plugin annotations** — the full JSON output from each ux-reviewer agent
-  2. **All plugin metadata** — name, version, author, description for each plugin (from Step 5b)
-  3. **Review objective** — the exact objective from Step 2
+  1. **All plugin annotations** — the full validated JSON output from each ux-reviewer agent
+  2. **Review brief paths** — tell the agent to read each plugin's `screenshots/<plugin-slug>/review-brief.md` for metadata, navigation structure, and journey notes
+  3. **Review objective** — the exact objective text from Step 2
   4. **Annotation depth** — from Step 2
 
 The agent returns:
@@ -429,8 +525,8 @@ Use this output to build the comparison gallery in Step 8.
   .flow-group { }
   .flow-label { font-size: 18px; font-weight: 600; color: #333; margin-bottom: 16px; border-left: 4px solid /* ACCENT_COLOR */; padding: 4px 0 4px 12px; }
 
-  /* Screenshots within section: horizontal */
-  .screenshots-row { display: flex; gap: 24px; align-items: flex-start; }
+  /* Screenshots within section: horizontal — NO flex-wrap, always side-by-side */
+  .screenshots-row { display: flex; gap: 24px; align-items: flex-start; /* DO NOT add flex-wrap */ }
 
   .screen-item { width: 420px; flex-shrink: 0; }
 
@@ -530,6 +626,8 @@ Use this output to build the comparison gallery in Step 8.
 </body>
 </html>
 ```
+
+**IMPORTANT: Do NOT add `flex-wrap: wrap` to `.screenshots-row`.** If a section has many screenshots, they should extend horizontally. Figma auto-layout handles overflow correctly. Wrapping breaks the side-by-side intent and makes the gallery look like a vertical list.
 
 **Accent colors** — pick a unique color per plugin based on their brand. Use the plugin's primary brand color for `.step-num` background and `.flow-label` border.
 
@@ -681,3 +779,6 @@ After the ux-comparator subagent returns its output (Step 7c), generate a separa
 | Guessed tab URL slug from visible label | Extract actual `href` from DOM — slugs often differ from display names (e.g. "Smart Routing" → `tab=routing`, "Email Controls" → `tab=control`). Use `eval` to extract: `agent-browser --session $SESSION eval "Array.from(document.querySelectorAll('[class*=nav-menu] a, .nav-tab-wrapper a')).map(a => a.textContent.trim() + ' → ' + a.href).join('\\n')"` |
 | Full-page screenshot extremely tall (addons, templates, integrations) | Use viewport-only capture (no `--full`) for pages with long scrollable lists. If `Read` fails on the PNG due to dimension limits, recapture without `--full`. |
 | Comparison table rating badges overlap text | Use `display: block` on `.rating` so labels stack above description text. Never use `display: inline-block` for ratings in table cells. |
+| agent-browser click runs in background on timeout | The page likely navigated. Use `open` to navigate to the expected URL instead of waiting for the click result. |
+| Element UI / Vue radio buttons don't respond to Playwright click | Use `eval` to click `.el-radio-button__inner` elements directly via JS: `agent-browser --session $SESSION eval "document.querySelector('.el-radio-button__inner[textContent]').click()"` |
+| Subagent annotates off-topic screens | Objective enforcement failed. Check that Step 5c filtering was applied and that the ux-reviewer prompt includes the objective with CRITICAL enforcement language. |
