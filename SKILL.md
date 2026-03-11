@@ -56,7 +56,6 @@ Use AskUserQuestion to determine where the WordPress site lives. This is the **f
 Options:
 1. **Local site** — "I have a local WordPress setup (Local by Flywheel, MAMP, Valet, Docker, etc.)"
 2. **Remote/QA site** — "I have a live or staging site with a URL and credentials"
-3. **Playground** — "Spin up a temporary WordPress instance for me (no existing site needed)"
 
 ### Path A: Local Site
 
@@ -144,47 +143,6 @@ Ask the user (combine with Step 2 questions):
 - Some pages may require specific roles/permissions — if a page is inaccessible, note it and move on
 - Plugin list comes from the admin UI (Plugins page), not WP-CLI
 
-### Path C: Playground (Temporary Instance)
-
-Spin up a temporary WordPress instance using `wp-now`:
-
-```bash
-# Check if wp-now is available
-npx @wp-now/wp-now --version
-```
-
-Create a blueprint JSON to install the target plugins:
-```json
-{
-  "steps": [
-    { "step": "installPlugin", "pluginSlug": "sugar-calendar-lite" },
-    { "step": "installPlugin", "pluginSlug": "the-events-calendar" },
-    {
-      "step": "login",
-      "username": "admin",
-      "password": "password"
-    }
-  ]
-}
-```
-
-Start the instance:
-```bash
-npx @wp-now/wp-now start --blueprint=blueprint.json --port=8881 --skip-browser
-```
-
-Playground details:
-- **URL:** `http://localhost:8881`
-- **Credentials:** `admin` / `password` (wp-now defaults)
-- **WP-CLI:** Not available (wp-now uses SQLite, not MySQL) — use admin UI for plugin management
-- **Cleanup:** Just kill the `wp-now` process when done
-
-**Playground limitations:**
-- Only free/WordPress.org plugins can be auto-installed via blueprint
-- No Pro/premium plugins (user must upload manually via admin UI after start)
-- SQLite backend — some plugins may behave differently than on MySQL
-- Temporary — data is lost when the process stops (use `--reset` for a clean slate)
-
 ## Step 2: Gather Remaining User Input (Single Interaction)
 
 Combine these with the environment questions from Step 1 whenever possible. The user should answer everything in **one interaction**, then walk away.
@@ -192,7 +150,6 @@ Combine these with the environment questions from Step 1 whenever possible. The 
 **Question: Plugins to review**
 - For **local sites with WP-CLI**: auto-detect installed plugins, show as options
 - For **remote sites**: ask the user which plugins to review (they know what's installed)
-- For **playground**: ask which plugin slugs to install (must be WordPress.org slugs)
 - Let the user type custom plugin names if not in the list
 - For local sites: if a plugin isn't installed, offer to install it via WP-CLI
 
@@ -232,11 +189,11 @@ If multiple plugins are selected, always generate a comparison table (no need to
 
 This lets the user walk away while work happens.
 
-## Step 3: Clean Slate (Local & Playground only)
+## Step 3: Clean Slate (Local Sites Only)
 
 **Skip this step for remote/QA sites** — do not modify plugins on remote sites.
 
-For local and playground sites, deactivate ALL other plugins so there are no cross-plugin notices, banners, or conflicts:
+For local sites, deactivate ALL other plugins so there are no cross-plugin notices, banners, or conflicts:
 
 ```bash
 # List all active plugins except the target
@@ -527,9 +484,9 @@ Use `figmadelay=3000` to ensure images load before capture.
 
 ## Step 10: Cleanup
 
-Cleanup depends on the environment path chosen in Step 1.
+Cleanup depends on the environment chosen in Step 1.
 
-**Local site (Path A):**
+**Local site:**
 ```bash
 # Delete temp user (only if we created one)
 <wp-cli-command> user delete claude-reviewer --reassign=1 --path="<wp-root>"
@@ -541,20 +498,11 @@ Cleanup depends on the environment path chosen in Step 1.
 kill %1 2>/dev/null
 ```
 
-**Remote/QA site (Path B):**
+**Remote/QA site:**
 ```bash
 # Nothing to clean up — we didn't modify the site
 # Just kill the local HTTP server if started for gallery preview
 kill %1 2>/dev/null
-```
-
-**Playground (Path C):**
-```bash
-# Kill the wp-now process
-kill %1 2>/dev/null
-
-# Optionally remove the blueprint file
-rm -f blueprint.json
 ```
 
 ## UX Annotation Guide
