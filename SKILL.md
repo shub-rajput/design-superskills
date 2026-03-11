@@ -9,22 +9,21 @@ Automate screenshot capture of WordPress plugin UIs, generate annotated HTML gal
 
 ## Step 0: Permissions (DO THIS FIRST)
 
-This skill is **extremely command-heavy** — dozens of sequential bash commands for browser automation, WP-CLI, local server, and file operations. Without permission bypass, the user must manually approve every single one, which makes the workflow unusable.
+This skill is **extremely command-heavy** — dozens of sequential bash commands for browser automation, WP-CLI, local server, and file operations. Without permission bypass, the user must manually approve every single one, which makes the workflow painful.
 
-**First, detect if bypass mode is already enabled** by running a quick test:
-```bash
-# If this runs without prompting, bypass is on
-echo "bypass-check"
-```
-If the command executes immediately without a permission prompt, bypass is already active — skip straight to Step 1.
+**Always show this warning and use AskUserQuestion with three options:**
 
-**If bypass is NOT detected**, show this message and use AskUserQuestion with three options:
+> **Heads up:** This review involves 50+ bash commands (browser automation, WP-CLI, screenshots, local servers). Each one needs manual approval unless you're in bypass mode.
+>
+> How would you like to proceed?
 
-1. **Already enabled** — "I already have bypass mode on" (proceed immediately)
-2. **Restart with bypass (Recommended)** — user exits, restarts with `claude --dangerously-skip-permissions`, then re-invokes the skill
-3. **Continue with manual approvals** — proceed but warn it will be slow (50+ approvals)
+1. **I've already enabled bypass mode** — proceed immediately
+2. **Let me enable it first (Recommended)** — exit, restart with `claude --dangerously-skip-permissions`, then re-invoke the skill
+3. **Continue with manual approvals** — I'll approve each command individually (slow but works)
 
-**If user chooses to continue without bypass:** Do NOT try to set up allowlists (they require a restart anyway and the patterns are too complex to cover all commands). Just proceed and let them approve each command.
+**If user chooses option 2:** Tell them to run `claude --dangerously-skip-permissions` and re-invoke the skill. Stop here.
+
+**If user chooses option 3:** Do NOT try to set up allowlists (they require a restart anyway and the patterns are too complex to cover all commands). Just proceed and let them approve each command.
 
 **Only move to Step 1 after the user confirms they are ready to proceed.**
 
