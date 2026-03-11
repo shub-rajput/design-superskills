@@ -32,26 +32,51 @@ This skill is **extremely command-heavy** — dozens of sequential bash commands
 
 **You MUST use AskUserQuestion here and WAIT for the user's response. Do NOT proceed, do NOT run any Bash commands, do NOT explore the codebase, do NOT skip this step. No matter what mode you think you're in, always ask.**
 
-Ask with these three options:
+Ask with these options:
 
-> **Heads up:** This review involves 50+ bash commands (browser automation, WP-CLI, screenshots, local servers). Each one needs manual approval unless you're in bypass mode.
+> **Heads up:** This review involves 50+ bash commands (browser automation, WP-CLI, screenshots, local servers). Each one needs manual approval unless permissions are configured.
 >
 > How would you like to proceed?
 
-1. **I've already enabled bypass mode** — proceed immediately
-2. **Let me enable it first (Recommended)** — exit, restart with `claude --dangerously-skip-permissions`, then re-invoke the skill
-3. **Continue with manual approvals** — I'll approve each command individually (slow but works)
+1. **Add permissions to settings (Recommended)** — I'll add the required tool permissions to your project's `.claude/settings.json`, then you restart Claude Code and re-invoke the skill
+2. **Use bypass mode** — exit, restart with `claude --dangerously-skip-permissions`, then re-invoke the skill
+3. **I've already set up permissions or bypass mode** — proceed immediately
+4. **Continue with manual approvals** — I'll approve each command individually (slow but works)
 
 **After the user responds:**
-- **Option 1:** Proceed to Step 1.
+
+- **Option 1:** Read the user's `.claude/settings.json` (create if it doesn't exist). Merge the following permissions into the `permissions.allow` array, preserving any existing entries and all other settings (especially `enabledPlugins`):
+
+```json
+{
+  "permissions": {
+    "allow": [
+      "Bash(agent-browser:*)",
+      "Bash(python3 -m http.server:*)",
+      "Bash(curl -s:*)",
+      "Bash(mkdir -p screenshots:*)",
+      "Bash(mkdir -p screenshots/*)",
+      "Bash(chmod +x:*)",
+      "Bash(kill:*)",
+      "Bash(open http:*)",
+      "Bash(cat > screenshots:*)",
+      "Bash(screenshots/wp:*)"
+    ]
+  }
+}
+```
+
+After writing, tell the user: "Permissions added. Please restart Claude Code (`/exit` then relaunch) and re-invoke the skill." **Stop here — do nothing else.**
+
 - **Option 2:** Tell them to run `claude --dangerously-skip-permissions` and re-invoke the skill. **Stop here — do nothing else.**
-- **Option 3:** Proceed to Step 1, but warn it will be slow (50+ individual approvals). Do NOT try to set up allowlists.
+- **Option 3:** Proceed to Step 1.
+- **Option 4:** Proceed to Step 1, but warn it will be slow (50+ individual approvals).
 
 **Do NOT move to Step 1 until the user has explicitly chosen an option.**
 
 ## CRITICAL: No Shell Variables in Bash Commands
 
-Claude Code flags commands containing `$VARIABLE` syntax (like `$HOME`, `$PHP_BIN`, `$SOCKET`) as requiring **extra** manual approval for shell expansion — even in bypass mode this adds friction.
+Claude Code flags commands containing `$VARIABLE` syntax (like `$HOME`, `$PHP_BIN`, `$SOCKET`) as requiring **extra** manual approval for shell expansion — even with pre-configured permissions this adds friction.
 
 **Rule: Always use fully resolved, literal paths in every Bash command. Never use `$HOME`, `$PHP_BIN`, `$SOCKET`, `$WP_CLI`, `$WP_PATH`, or any other shell variable.**
 
