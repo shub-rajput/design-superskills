@@ -48,109 +48,156 @@ Discover paths in Step 1 (WP-CLI Setup), then inline the resolved values in ever
 
 Also avoid chaining commands with `||` and `&&` — these trigger "shell operators" approval. Use separate sequential Bash calls instead.
 
-## Step 1: Prerequisites
+## Step 1: Choose Environment
 
-Run these checks. All must pass before proceeding:
+Use AskUserQuestion to determine where the WordPress site lives. This is the **first question** — everything else depends on it.
+
+> **Where is the WordPress site you want to review?**
+
+Options:
+1. **Local site** — "I have a local WordPress setup (Local by Flywheel, MAMP, Valet, Docker, etc.)"
+2. **Remote/QA site** — "I have a live or staging site with a URL and credentials"
+3. **Playground** — "Spin up a temporary WordPress instance for me (no existing site needed)"
+
+### Path A: Local Site
+
+Ask the user (can be combined with Step 2 questions):
+
+> **Local site details:**
+> - Directory path? (e.g., `/Users/jane/Local Sites/my-site` or leave blank if current directory)
+> - Do you have admin credentials, or should I create a temporary user?
+>   - "Here are my credentials: `username` / `password`"
+>   - "Create a temporary user for me" (requires WP-CLI)
+
+Then run prerequisites:
 
 | Check | How | Fix |
 |-------|-----|-----|
 | **agent-browser** | `which agent-browser` | `npx skills add https://github.com/vercel-labs/agent-browser --skill agent-browser` |
 | **Figma MCP** | Check for `mcp__figma__get_design_context` or `mcp__figma__generate_figma_design` in available tools | User must configure Figma MCP server |
-| **Working directory** | Check for `wp-config.php` or `app/public/wp-config.php` | Must `cd` into the WordPress site directory |
-| **WP-CLI** | See "WP-CLI Setup" section below | Install and configure |
-| **Site is running** | `curl -s -o /dev/null -w "%{http_code}" "$SITE_URL"` | Start the Local site or web server |
+| **Working directory** | Check for `wp-config.php` or `app/public/wp-config.php` in the given path | Ask user for correct path |
+| **WP-CLI** | See "WP-CLI Setup" section below | Only needed if creating temp user or managing plugins |
+| **Site is running** | `curl -s -o /dev/null -w "%{http_code}" <site-url>` | User must start their local server |
 
-### WP-CLI Setup
+#### WP-CLI Setup (Local Sites Only)
 
 WP-CLI setup varies by environment. Detect and configure automatically:
 
-**For Local by Flywheel sites:**
+**Try direct WP-CLI first** — works on most setups (Valet, Docker, standard):
+```bash
+wp option get siteurl --path="<wp-root>"
+```
+If this works, use `wp` directly for all commands.
 
-1. Find the site's ID and MySQL socket via Local's GraphQL API:
-   ```bash
-   # Read Local's connection info
-   cat "$HOME/Library/Application Support/Local/graphql-connection-info.json"
-   # Query for site details — match by path
-   curl -s "http://127.0.0.1:4000/graphql" \
-     -H "Content-Type: application/json" \
-     -H "Authorization: Bearer $AUTH_TOKEN" \
-     -d '{"query":"{ sites { id name path } }"}'
-   ```
+**If direct WP-CLI fails, detect the environment:**
 
-2. Find the PHP binary and MySQL socket:
-   ```bash
-   # List available PHP versions
-   ls "$HOME/Library/Application Support/Local/lightning-services/" | grep php
-   # Find the PHP binary (use the latest version)
-   find "$HOME/Library/Application Support/Local/lightning-services/php-VERSION/bin" -name "php" -type f
-   # Socket is at:
-   # $HOME/Library/Application Support/Local/run/$SITE_ID/mysql/mysqld.sock
-   ```
+**Local by Flywheel:**
+1. Read `~/Library/Application Support/Local/graphql-connection-info.json` for auth token
+2. Query Local's GraphQL API to find the site ID matching the path
+3. Find PHP binary under `~/Library/Application Support/Local/lightning-services/`
+4. Find MySQL socket at `~/Library/Application Support/Local/run/<site-id>/mysql/mysqld.sock`
+5. WP-CLI command pattern: `"<php-path>" -d "mysqli.default_socket=<socket>" -d "memory_limit=512M" "<wp-cli-path>" <command> --path="<wp-root>"`
 
-3. Test the connection:
-   ```bash
-   "$PHP_BIN" -d "mysqli.default_socket=$SOCKET" -d "memory_limit=512M" "$WP_CLI" option get siteurl --path="$WP_PATH"
-   ```
-
-4. **Define a shell function** to avoid repeating the long command. Set these variables and reuse throughout:
-   ```bash
-   PHP_BIN="<discovered path>"
-   SOCKET="<discovered socket>"
-   WP_CLI="$HOME/.local/bin/wp"  # or wherever wp-cli.phar is
-   WP_PATH="<site>/app/public"
-   ```
-   Then every WP-CLI call becomes:
-   ```bash
-   "$PHP_BIN" -d "mysqli.default_socket=$SOCKET" -d "memory_limit=512M" "$WP_CLI" <command> --path="$WP_PATH"
-   ```
+**MAMP:**
+- PHP at `/Applications/MAMP/bin/php/phpX.X.X/bin/php`
+- MySQL socket at `/Applications/MAMP/tmp/mysql/mysql.sock`
 
 **If WP-CLI is not installed:**
 ```bash
 curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
 chmod +x wp-cli.phar
-mkdir -p "$HOME/.local/bin"
-mv wp-cli.phar "$HOME/.local/bin/wp"
+mkdir -p ~/.local/bin
+mv wp-cli.phar ~/.local/bin/wp
 ```
 
-**For non-Local environments (standard server, MAMP, etc.):**
-- Just use `wp` directly if it's in PATH
-- Or use the PHP binary with wp-cli.phar
+#### Discover Site URL (if user didn't provide one)
 
-### Discover Site URL
-
-Do NOT hardcode URLs. Discover from WP-CLI:
 ```bash
-# Use the WP-CLI command pattern established above
-"$PHP_BIN" -d "mysqli.default_socket=$SOCKET" -d "memory_limit=512M" "$WP_CLI" option get siteurl --path="$WP_PATH"
+<wp-cli-command> option get siteurl --path="<wp-root>"
 ```
 
-### Create Automation User
+#### Create Automation User (if user chose this option)
 
-Create a temporary admin user for browser automation so we don't need the user's credentials:
 ```bash
-"$PHP_BIN" -d "mysqli.default_socket=$SOCKET" -d "memory_limit=512M" "$WP_CLI" user create claude-reviewer claude@localhost.local --role=administrator --user_pass=claude-ux-review --path="$WP_PATH"
+<wp-cli-command> user create claude-reviewer claude@localhost.local --role=administrator --user_pass=claude-ux-review --path="<wp-root>"
 ```
 
-Store credentials in variables:
+Credentials: `claude-reviewer` / `claude-ux-review`. Clean up in Step 10.
+
+### Path B: Remote/QA Site
+
+Ask the user (combine with Step 2 questions):
+
+> **Remote site details:**
+> - Site URL? (e.g., `https://qa.example.com`)
+> - Admin credentials? (username and password)
+> - Is the login page at `/wp-login.php` or a custom URL?
+
+**No WP-CLI setup needed.** For remote sites:
+- Skip WP-CLI detection entirely
+- Skip temp user creation (use their credentials)
+- Skip plugin activation/deactivation (the site is already configured how they want it)
+- Use agent-browser only for login, navigation, and screenshots
+- Do NOT modify anything on the site (no plugin changes, no user creation, no settings changes)
+
+**Important for remote sites:**
+- The user's credentials may use 2FA, custom login pages, or SSO — be prepared to handle non-standard login flows via agent-browser
+- Some pages may require specific roles/permissions — if a page is inaccessible, note it and move on
+- Plugin list comes from the admin UI (Plugins page), not WP-CLI
+
+### Path C: Playground (Temporary Instance)
+
+Spin up a temporary WordPress instance using `wp-now`:
+
 ```bash
-WP_USER="claude-reviewer"
-WP_PASS="claude-ux-review"
+# Check if wp-now is available
+npx @wp-now/wp-now --version
 ```
 
-**Clean up at the end of the workflow** (see Step 9).
+Create a blueprint JSON to install the target plugins:
+```json
+{
+  "steps": [
+    { "step": "installPlugin", "pluginSlug": "sugar-calendar-lite" },
+    { "step": "installPlugin", "pluginSlug": "the-events-calendar" },
+    {
+      "step": "login",
+      "username": "admin",
+      "password": "password"
+    }
+  ]
+}
+```
 
-## Step 2: Gather ALL User Input (Single Interaction)
+Start the instance:
+```bash
+npx @wp-now/wp-now start --blueprint=blueprint.json --port=8881 --skip-browser
+```
 
-Ask ALL questions in ONE AskUserQuestion call. The user should only need to answer once, then walk away.
+Playground details:
+- **URL:** `http://localhost:8881`
+- **Credentials:** `admin` / `password` (wp-now defaults)
+- **WP-CLI:** Not available (wp-now uses SQLite, not MySQL) — use admin UI for plugin management
+- **Cleanup:** Just kill the `wp-now` process when done
 
-**Questions to ask (use AskUserQuestion with up to 4 questions):**
+**Playground limitations:**
+- Only free/WordPress.org plugins can be auto-installed via blueprint
+- No Pro/premium plugins (user must upload manually via admin UI after start)
+- SQLite backend — some plugins may behave differently than on MySQL
+- Temporary — data is lost when the process stops (use `--reset` for a clean slate)
 
-**Question 1: Plugins to review**
-- First, auto-detect installed plugins and show them as options
-- Let the user select from installed plugins OR type custom ones
-- If a plugin isn't installed, offer to install it
+## Step 2: Gather Remaining User Input (Single Interaction)
 
-**Question 2: Review objective**
+Combine these with the environment questions from Step 1 whenever possible. The user should answer everything in **one interaction**, then walk away.
+
+**Question: Plugins to review**
+- For **local sites with WP-CLI**: auto-detect installed plugins, show as options
+- For **remote sites**: ask the user which plugins to review (they know what's installed)
+- For **playground**: ask which plugin slugs to install (must be WordPress.org slugs)
+- Let the user type custom plugin names if not in the list
+- For local sites: if a plugin isn't installed, offer to install it via WP-CLI
+
+**Question: Review objective**
 - Ask: "What's the objective for this review?"
 - Options:
   - **General review** — capture all screens, note what's working and what isn't (default)
@@ -160,11 +207,11 @@ Ask ALL questions in ONE AskUserQuestion call. The user should only need to answ
 
 The objective shapes what gets annotated. All annotations should be viewed through the lens of the chosen objective. For example, a "first-time user experience" review would focus annotations on discoverability and guidance, while a "monetization audit" would focus on upsell patterns and friction.
 
-**Question 3: Figma import**
+**Question: Figma import**
 - Ask: "Do you have a Figma file URL for import?"
 - Options: "Yes, I'll paste it" / "Skip Figma import"
 
-**Question 4: Annotation depth**
+**Question: Annotation depth**
 - Ask: "How detailed should annotations be?"
 - Options:
   - **None** — screenshots only, no annotations (fastest)
@@ -186,37 +233,45 @@ If multiple plugins are selected, always generate a comparison table (no need to
 
 This lets the user walk away while work happens.
 
-## Step 3: Clean Slate
+## Step 3: Clean Slate (Local & Playground only)
 
-Deactivate ALL other plugins so there are no cross-plugin notices, banners, or conflicts:
+**Skip this step for remote/QA sites** — do not modify plugins on remote sites.
+
+For local and playground sites, deactivate ALL other plugins so there are no cross-plugin notices, banners, or conflicts:
 
 ```bash
 # List all active plugins except the target
-"$PHP_BIN" -d "mysqli.default_socket=$SOCKET" -d "memory_limit=512M" "$WP_CLI" plugin list --status=active --field=name --path="$WP_PATH"
+<wp-cli-command> plugin list --status=active --field=name --path="<wp-root>"
 
 # Deactivate all except target (use memory_limit to avoid Elementor OOM)
-"$PHP_BIN" -d "mysqli.default_socket=$SOCKET" -d "memory_limit=512M" "$WP_CLI" plugin deactivate $OTHER_PLUGINS --path="$WP_PATH"
+<wp-cli-command> plugin deactivate <other-plugins> --path="<wp-root>"
 
 # Ensure target is active
-"$PHP_BIN" -d "mysqli.default_socket=$SOCKET" -d "memory_limit=512M" "$WP_CLI" plugin activate $TARGET_PLUGIN --path="$WP_PATH"
+<wp-cli-command> plugin activate <target-plugin> --path="<wp-root>"
 ```
 
-**Important:** Always use `-d "memory_limit=512M"` — plugins like Elementor and WooCommerce can exhaust the default 128M during deactivation.
+**Important:** Always use `-d "memory_limit=512M"` with WP-CLI commands — plugins like Elementor and WooCommerce can exhaust the default 128M during deactivation.
 
 ## Step 4: Login via agent-browser
 
-Sessions expire frequently. Always re-login before each plugin:
+Sessions expire frequently. Always re-login before each plugin.
 
+**Standard WordPress login (`/wp-login.php`):**
 ```bash
-agent-browser --session $SESSION open "$SITE_URL/wp-login.php"
-agent-browser --session $SESSION fill "#user_login" "$WP_USER"
-agent-browser --session $SESSION fill "#user_pass" "$WP_PASS"
-agent-browser --session $SESSION click "#wp-submit"
+agent-browser --session <session> open "<site-url>/wp-login.php"
+agent-browser --session <session> fill "#user_login" "<username>"
+agent-browser --session <session> fill "#user_pass" "<password>"
+agent-browser --session <session> click "#wp-submit"
 ```
 
-**Verify login succeeded** — check the page title contains "Dashboard":
+**For remote sites with custom login:**
+- If the user specified a custom login URL, use that instead of `/wp-login.php`
+- If the login page looks different (custom theme, SSO redirect), use `snapshot -i` to find the correct form fields and submit button
+- If 2FA is required, ask the user to provide the code via AskUserQuestion
+
+**Verify login succeeded** — open the dashboard and check it loads:
 ```bash
-agent-browser --session $SESSION open "$SITE_URL/wp-admin/"
+agent-browser --session <session> open "<site-url>/wp-admin/"
 ```
 
 ## Step 5: Discover Plugin Pages
@@ -473,17 +528,34 @@ Use `figmadelay=3000` to ensure images load before capture.
 
 ## Step 10: Cleanup
 
-After all plugins are reviewed:
+Cleanup depends on the environment path chosen in Step 1.
 
+**Local site (Path A):**
 ```bash
-# Delete the temporary automation user
-"$PHP_BIN" -d "mysqli.default_socket=$SOCKET" -d "memory_limit=512M" "$WP_CLI" user delete claude-reviewer --reassign=1 --path="$WP_PATH"
+# Delete temp user (only if we created one)
+<wp-cli-command> user delete claude-reviewer --reassign=1 --path="<wp-root>"
 
-# Reactivate the plugins that were originally active
-"$PHP_BIN" -d "mysqli.default_socket=$SOCKET" -d "memory_limit=512M" "$WP_CLI" plugin activate $ORIGINALLY_ACTIVE_PLUGINS --path="$WP_PATH"
+# Reactivate originally active plugins
+<wp-cli-command> plugin activate <originally-active-plugins> --path="<wp-root>"
 
-# Kill local server if started
+# Kill local HTTP server if started for gallery preview
 kill %1 2>/dev/null
+```
+
+**Remote/QA site (Path B):**
+```bash
+# Nothing to clean up — we didn't modify the site
+# Just kill the local HTTP server if started for gallery preview
+kill %1 2>/dev/null
+```
+
+**Playground (Path C):**
+```bash
+# Kill the wp-now process
+kill %1 2>/dev/null
+
+# Optionally remove the blueprint file
+rm -f blueprint.json
 ```
 
 ## UX Annotation Guide
