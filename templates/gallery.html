@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=2200">
+<title>Plugin Name — UX Review</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { background: #F5F5F5; font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding: 60px; }
+
+  /* Outer wrapper: hug content width */
+  .gallery-wrapper { display: inline-flex; flex-direction: column; gap: 12px; }
+
+  /* Header: fills wrapper width */
+  .section-header { background: #1E1E1E; color: white; padding: 24px 32px; border-radius: 12px; align-self: stretch; }
+  .section-header h1 { font-size: 28px; font-weight: 700; }
+  .section-header p { font-size: 14px; color: #999; margin-top: 4px; }
+
+  /* Optional: UX summary banner */
+  .ux-summary { background: #FFF8E1; border: 1px solid #FFD54F; border-radius: 8px; padding: 16px 20px; margin-bottom: 20px; font-size: 13px; color: #5D4037; line-height: 1.6; align-self: stretch; }
+
+  /* Sections stack vertically, fill wrapper width */
+  .sections-container { display: flex; flex-direction: column; gap: 48px; align-self: stretch; }
+
+  .flow-label { font-size: 18px; font-weight: 600; color: #333; margin-bottom: 16px; border-left: 4px solid ACCENT_COLOR; padding: 4px 0 4px 12px; }
+
+  /* Screenshots within section: horizontal — NO flex-wrap, always side-by-side */
+  .screenshots-row { display: flex; gap: 24px; align-items: flex-start; /* DO NOT add flex-wrap */ }
+
+  .screen-item { width: 420px; flex-shrink: 0; }
+
+  /* Title ABOVE screenshot */
+  .screen-title { padding: 10px 4px 8px; font-size: 13px; font-weight: 500; color: #555; }
+  .step-num { display: inline-block; background: ACCENT_COLOR; color: white; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; margin-right: 8px; }
+
+  .screenshot-card { background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow: hidden; }
+  .screenshot-card img { width: 100%; display: block; }
+
+  /* UX annotation callouts — vertically stacked label + description */
+  .ux-notes { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
+  .ux-note { display: flex; flex-direction: column; gap: 3px; background: #FFF3E0; border-left: 3px solid #FB8C00; border-radius: 0 6px 6px 0; padding: 8px 10px; font-size: 11px; line-height: 1.45; color: #4E342E; }
+  .ux-note.positive { background: #E8F5E9; border-left-color: #43A047; color: #1B5E20; }
+  .ux-note.critical { background: #FFEBEE; border-left-color: #E53935; color: #B71C1C; }
+  .ux-note .tag { font-weight: 700; font-size: 10px; text-transform: uppercase; letter-spacing: 0.3px; }
+
+  /* Comparison conclusion section (optional) */
+  .comparison-section { background: white; border-radius: 12px; padding: 32px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); align-self: stretch; }
+  .comparison-section h2 { font-size: 22px; font-weight: 700; margin-bottom: 16px; }
+  .comparison-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .comparison-table th { text-align: left; padding: 10px 12px; background: #F5F5F5; font-weight: 600; border-bottom: 2px solid #ddd; }
+  .comparison-table td { padding: 10px 12px; border-bottom: 1px solid #eee; vertical-align: top; }
+  /* Rating labels — stacked above description text, never inline */
+  .rating { display: block; font-size: 11px; font-weight: 700; margin-bottom: 4px; }
+  .rating.excellent { color: #2E7D32; }
+  .rating.good { color: #1565C0; }
+  .rating.fair { color: #F57F17; }
+  .rating.poor { color: #C62828; }
+
+  /* Impact/Opportunity annotation variant */
+  .ux-note .score { font-weight: 700; font-size: 10px; color: #555; margin-top: 2px; }
+  .ux-note .score .high { color: #2E7D32; }
+  .ux-note .score .low { color: #999; }
+</style>
+<script src="https://mcp.figma.com/mcp/html-to-design/capture.js" async></script>
+</head>
+<body>
+
+<div class="gallery-wrapper">
+
+<div class="section-header">
+  <h1>Plugin Name — UX Review</h1>
+  <p>by Author &bull; vX.X &bull; Description</p>
+</div>
+
+<!-- Optional UX summary -->
+<div class="ux-summary"><strong>Overall:</strong> Summary here.</div>
+
+<div class="sections-container">
+
+  <div class="flow-group">
+    <div class="flow-label">Section Name</div>
+    <div class="screenshots-row">
+      <div class="screen-item">
+        <div class="screen-title"><span class="step-num">1</span>Screen Title</div>
+        <div class="screenshot-card">
+          <img src="plugin-slug/01-screen.png" alt="Screen">
+        </div>
+        <!-- Optional UX notes -->
+        <div class="ux-notes">
+          <div class="ux-note critical">
+            <span class="tag">Issue</span>
+            Description of the issue here.
+          </div>
+          <div class="ux-note positive">
+            <span class="tag">Good</span>
+            Description of what works well.
+          </div>
+        </div>
+      </div>
+      <!-- More screen-items horizontally -->
+    </div>
+  </div>
+
+  <!-- More flow-groups stacked vertically -->
+
+</div>
+
+<!-- Optional: Comparison Conclusion (when reviewing multiple plugins) -->
+<!--
+<div class="comparison-section">
+  <h2>Comparison Conclusion</h2>
+  <table class="comparison-table">
+    <tr><th>Aspect</th><th>Plugin A</th><th>Plugin B</th><th>Plugin C</th></tr>
+    <tr><td>Onboarding</td><td>...</td><td>...</td><td>...</td></tr>
+    <tr><td>Settings UX</td><td>...</td><td>...</td><td>...</td></tr>
+    <tr><td>Email Logs</td><td>...</td><td>...</td><td>...</td></tr>
+    <tr><td>Upsell Approach</td><td>...</td><td>...</td><td>...</td></tr>
+    <tr><td>Overall Score</td><td>...</td><td>...</td><td>...</td></tr>
+  </table>
+</div>
+-->
+
+</div><!-- /gallery-wrapper -->
+
+</body>
+</html>

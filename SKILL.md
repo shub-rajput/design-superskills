@@ -7,6 +7,25 @@ description: Use when capturing screenshots of WordPress plugins for UX review, 
 
 Automate screenshot capture of WordPress plugin UIs, generate annotated HTML galleries, and import to Figma for UX review.
 
+## Quick Reference
+
+| Step | What | Key Decision |
+|------|------|-------------|
+| **0** | Permissions check | Bypass mode recommended |
+| **1** | Choose environment (local vs remote) | Determines WP-CLI availability |
+| **2** | Gather ALL user input in one interaction | Objective, plugins, annotations, Figma |
+| **3** | Clean slate — deactivate other plugins | Local only |
+| **4** | Login via agent-browser | Re-login before each plugin |
+| **5** | Discover pages → filter by objective → show user | Filtering happens before any screenshots |
+| **6** | Handle interruptions & blockers | First-run gates, wizards, banners |
+| **7** | Capture screenshots + journey notes | Deduplicate before dispatching reviewer |
+| **7a** | Write review brief | One per plugin |
+| **7b** | Dispatch ux-reviewer subagent(s) | Validate manifest counts after |
+| **7c** | Dispatch ux-comparator subagent | Multi-plugin only |
+| **8** | Generate HTML gallery, verify, get approval | Start server once, keep alive |
+| **9** | Import to Figma | Optional |
+| **10** | Cleanup | Restore plugins, delete temp user, kill server |
+
 ## Step 0: Permissions (DO THIS FIRST — MANDATORY)
 
 This skill is **extremely command-heavy** — dozens of sequential bash commands for browser automation, WP-CLI, local server, and file operations.
@@ -113,13 +132,22 @@ If this works, use `wp` directly for all commands.
 - PHP at `/Applications/MAMP/bin/php/phpX.X.X/bin/php`
 - MySQL socket at `/Applications/MAMP/tmp/mysql/mysql.sock`
 
-**If WP-CLI is not installed:**
+**If WP-CLI is not installed:** Download the phar from `https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar`, make it executable, and move to `~/.local/bin/wp`.
+
+#### WP-CLI Wrapper Script (Local Sites Only)
+
+After resolving the WP-CLI command (with PHP path, socket, etc.), write a wrapper script to avoid repeating 200+ character commands:
+
 ```bash
-curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli.phar
-chmod +x wp-cli.phar
-mkdir -p ~/.local/bin
-mv wp-cli.phar ~/.local/bin/wp
+# Write wrapper script with resolved paths
+cat > screenshots/wp <<'WRAPPER'
+#!/bin/bash
+"<resolved-php-path>" -d "mysqli.default_socket=<resolved-socket>" -d "memory_limit=512M" "<resolved-wp-cli-path>" "$@" --path="<resolved-wp-root>"
+WRAPPER
+chmod +x screenshots/wp
 ```
+
+Test it: `screenshots/wp option get siteurl`. Use `screenshots/wp` for ALL subsequent WP-CLI commands.
 
 #### Discover Site URL (if user didn't provide one)
 
@@ -195,7 +223,7 @@ The objective shapes what gets annotated. All annotations should be viewed throu
 **After gathering input, print a summary:**
 
 > **UX Review Plan:**
-> - Plugin(s): Amelia v1.1.5 (by TMS), Fluent Bookings v1.0.3 (by WPManageNinja)
+> - Plugin(s): WPForms, Sugar Calendar Bookings
 > - Objective: General review
 > - Comparison: Yes
 > - Annotations: Light
@@ -283,6 +311,16 @@ agent-browser --session $SESSION click "@ref=e21"
 10. Addons
 ```
 
+### Filter by Objective (Non-General Only)
+
+**Skip if the objective is "General review."** Otherwise, review the page list and **remove pages NOT directly relevant to the objective:**
+
+- **"Setting up mailer connections"** — Keep: onboarding, mailer selection, config forms, connection testing, success/failure. Remove: alerts, reporting, tools, about, logs.
+- **"First-time user experience"** — Keep: onboarding, wizard, first-run, empty states, dashboard (first view), core feature entry. Remove: advanced settings, tools, addons, about.
+- **"Upsell & monetization audit"** — Keep all pages (upsells appear anywhere), but only annotate upsell-related elements.
+
+**Show the filtered list to the user** in the Step 2 summary before any screenshots begin. Aim for **3-5 screenshots per section** — each showing a distinct journey step, not every variation of the same screen.
+
 ## Step 5b: Collect Plugin Metadata
 
 Gather metadata for each plugin **before** taking screenshots. This goes into gallery headers and provides context to the ux-reviewer subagent.
@@ -303,28 +341,7 @@ Extract the target plugin's version, author, and description from the output.
 - Gallery header (`<p>` tag under `<h1>`: "by Author &bull; vX.X &bull; Description")
 - Subagent prompt context (passed to both ux-reviewer and ux-comparator)
 
-## Step 5c: Filter Pages by Objective (Custom Objectives Only)
-
-**Skip this step if the objective is "General review."**
-
-When the user provided a specific objective (first-time UX, monetization audit, or custom text), review the page list from Step 5 and **remove any pages that are NOT directly part of the stated objective.**
-
-For example, if the objective is "setting up mailer connections":
-- **Keep:** onboarding/welcome screens, mailer selection, mailer configuration forms, connection testing, success/failure states
-- **Remove:** alerts, reporting, tools, about pages, miscellaneous settings, email logs, smart routing
-
-For "first-time user experience":
-- **Keep:** onboarding, setup wizard, first-run screens, empty states, dashboard (first view), core feature entry point
-- **Remove:** advanced settings, tools, addons, about pages
-
-For "upsell & monetization audit":
-- **Keep:** all pages — upsells can appear anywhere. But only annotate upsell-related elements.
-
-**Show the filtered list in the Step 2 summary** so the user can confirm scope before capture begins.
-
-**Screenshot count guidance:** For custom objectives, aim for **3-5 screenshots per section**. Each screenshot should show a distinct step in the user's journey, not every variation of the same screen. For example, when reviewing mailer setup, capture 2-3 representative mailer configs (one API-key provider, one OAuth provider, one SMTP provider) rather than all available options.
-
-## Step 6: Handle Interruptions
+## Step 6: Handle Interruptions & Blockers
 
 Dismiss these BEFORE taking screenshots:
 
@@ -338,6 +355,23 @@ Dismiss these BEFORE taking screenshots:
 | Upgrade/upsell banners | Dismiss or note for annotation |
 
 **Always use `snapshot -i`** to discover the correct ref before clicking. Never guess selectors.
+
+### First-Run Gates
+
+Some plugins gate their entire UI behind a welcome/setup screen that won't dismiss via normal clicks. Try these in order:
+
+1. **Direct URL navigation** — Skip the gate by navigating to a known admin page: `agent-browser --session $SESSION open "<site-url>/wp-admin/admin.php?page=<plugin-slug>-settings"`
+2. **JS dismiss** — Use `eval` to find and click hidden dismiss/skip elements: `agent-browser --session $SESSION eval "document.querySelector('[class*=skip], [class*=dismiss], [class*=close]')?.click()"`
+3. **WP-CLI option bypass** — Set the plugin's "setup complete" flag directly: `screenshots/wp option update <plugin_slug>_setup_complete 1` (check the plugin's options table for the exact key)
+4. **Capture as UX observation** — If none of the above work, capture the gate screen itself. A first-run screen that blocks access is a legitimate UX finding.
+
+### Wizard Progression
+
+Wizards that validate fields before advancing (e.g., requiring SMTP credentials):
+
+1. **Fill dummy values** — Use plausible-looking test data (e.g., `smtp.example.com`, port `587`, `test@example.com`). The goal is to reach subsequent screens, not to configure a working connection.
+2. **WP-CLI option bypass** — Set the wizard's step/completion option directly to jump past validation: `screenshots/wp option update <plugin_slug>_wizard_step 99`
+3. **Capture the validation state** — If the wizard won't advance, capture the error/validation state as a UX observation. A wizard that demands real credentials before letting users explore is itself a UX finding worth annotating.
 
 ## Step 7: Capture Screenshots
 
@@ -372,6 +406,10 @@ agent-browser --session $SESSION screenshot screenshots/$PLUGIN_SLUG/XX-descript
 - What you expected to see vs. what actually appeared
 
 Keep each note to 1-3 sentences. Factual observations, not analysis — the subagent does the analysis.
+
+### Deduplicate Screenshots
+
+Before writing the review brief, list all captured screenshots and Read any with similar names or sequential numbers that might be duplicates (e.g., `06-welcome.png` and `07-welcome-retry.png`). Delete near-duplicates — keep the cleanest capture. This prevents the reviewer subagent from annotating the same screen multiple times.
 
 ## Step 7a: Write Review Brief
 
@@ -450,14 +488,14 @@ The agent returns:
 
 **Handling agent status:**
 - **DONE:** Proceed to validation below.
-- **DONE_WITH_CONCERNS:** Read the concerns. If screenshots appeared irrelevant to the objective, that's a signal Step 5c filtering was incomplete — note it but proceed. If the agent couldn't read images, re-dispatch.
+- **DONE_WITH_CONCERNS:** Read the concerns. If screenshots appeared irrelevant to the objective, that's a signal Step 5 filtering was incomplete — note it but proceed. If the agent couldn't read images, re-dispatch.
 - **BLOCKED:** The agent couldn't complete analysis. Check if screenshots are readable (Read the PNGs yourself). If images are fine, re-dispatch with more context.
 
-**Post-subagent validation:** Before using the output, verify:
-1. The JSON covers ALL screenshots that were captured (no missing entries)
-2. Annotations are relevant to the stated objective (spot-check 2-3 entries)
-3. Section groupings make sense for the gallery layout
-4. If the objective was custom and annotations reference off-topic screens, remove those entries before building the gallery
+**Post-subagent validation:** The reviewer returns a `manifest` object with `screenshots_reviewed` and `screenshots_with_annotations` counts. Before using the output:
+1. **Check manifest counts** — `screenshots_reviewed` must equal the number of PNGs captured. If not, re-dispatch for the missing screenshots.
+2. Spot-check 2-3 annotations for objective relevance
+3. Verify section groupings make sense for the gallery layout
+4. If annotations reference off-topic screens, remove those entries
 
 Use the validated output to populate annotations in the HTML gallery (Step 8).
 
@@ -487,167 +525,35 @@ Use this output to build the comparison gallery in Step 8.
 
 ## Step 8: Generate HTML Gallery
 
-**Layout rules:**
-- Sections (Onboarding, Settings, Events, etc.) stacked **vertically**
-- Screenshots within each section laid out **horizontally** (side-by-side)
-- All flexbox for Figma auto-layout compatibility
-- Viewport `width=2200` for 3+ column sections
-- Include Figma capture script
-- Replace `$ACCENT_COLOR` with the plugin's actual brand color
+Read the template at `templates/gallery.html` (relative to this skill's repo root). Copy it to `screenshots/gallery-<plugin-slug>.html` and customize:
 
-**HTML template:**
+- Replace `Plugin Name`, `Author`, `vX.X`, `Description` in the header
+- Replace `/* ACCENT_COLOR */` with the plugin's brand color (for `.step-num` background and `.flow-label` border)
+- Populate sections from the ux-reviewer JSON: one `.flow-group` per section, one `.screen-item` per screenshot
+- Add `.ux-note` callouts from annotations (use `.critical`, `.positive`, or default orange for observations)
+- For Impact & Opportunity depth, add `.score` spans inside `.ux-note`
+- For comparisons, uncomment the `.comparison-section` block and populate from ux-comparator output
+- Fill the `.ux-summary` banner from the reviewer's summary bullets
 
-```html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=2200">
-<title>Plugin Name — UX Review</title>
-<style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { background: #F5F5F5; font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding: 60px; }
+**Critical layout rules:**
+- Do NOT add `flex-wrap: wrap` to `.screenshots-row` — screenshots extend horizontally, Figma handles overflow
+- Keep `width=2200` viewport for 3+ column sections
+- The Figma capture script (`capture.js`) is already in the template — do not remove it
 
-  /* Outer wrapper: hug content width */
-  .gallery-wrapper { display: inline-flex; flex-direction: column; gap: 12px; }
+### Local Server & Gallery Verification
 
-  /* Header: fills wrapper width */
-  .section-header { background: #1E1E1E; color: white; padding: 24px 32px; border-radius: 12px; align-self: stretch; }
-  .section-header h1 { font-size: 28px; font-weight: 700; }
-  .section-header p { font-size: 14px; color: #999; margin-top: 4px; }
-
-  /* Optional: UX summary banner */
-  .ux-summary { background: #FFF8E1; border: 1px solid #FFD54F; border-radius: 8px; padding: 16px 20px; margin-bottom: 20px; font-size: 13px; color: #5D4037; line-height: 1.6; align-self: stretch; }
-
-  /* Sections stack vertically, fill wrapper width */
-  .sections-container { display: flex; flex-direction: column; gap: 48px; align-self: stretch; }
-
-  .flow-group { }
-  .flow-label { font-size: 18px; font-weight: 600; color: #333; margin-bottom: 16px; border-left: 4px solid /* ACCENT_COLOR */; padding: 4px 0 4px 12px; }
-
-  /* Screenshots within section: horizontal — NO flex-wrap, always side-by-side */
-  .screenshots-row { display: flex; gap: 24px; align-items: flex-start; /* DO NOT add flex-wrap */ }
-
-  .screen-item { width: 420px; flex-shrink: 0; }
-
-  /* Title ABOVE screenshot */
-  .screen-title { padding: 10px 4px 8px; font-size: 13px; font-weight: 500; color: #555; }
-  .step-num { display: inline-block; background: /* ACCENT_COLOR */; color: white; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; margin-right: 8px; }
-
-  .screenshot-card { background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow: hidden; }
-  .screenshot-card img { width: 100%; display: block; }
-
-  /* UX annotation callouts — vertically stacked label + description */
-  .ux-notes { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }
-  .ux-note { display: flex; flex-direction: column; gap: 3px; background: #FFF3E0; border-left: 3px solid #FB8C00; border-radius: 0 6px 6px 0; padding: 8px 10px; font-size: 11px; line-height: 1.45; color: #4E342E; }
-  .ux-note.positive { background: #E8F5E9; border-left-color: #43A047; color: #1B5E20; }
-  .ux-note.critical { background: #FFEBEE; border-left-color: #E53935; color: #B71C1C; }
-  .ux-note .tag { font-weight: 700; font-size: 10px; text-transform: uppercase; letter-spacing: 0.3px; }
-
-  /* Comparison conclusion section (optional) */
-  .comparison-section { background: white; border-radius: 12px; padding: 32px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); align-self: stretch; }
-  .comparison-section h2 { font-size: 22px; font-weight: 700; margin-bottom: 16px; }
-  .comparison-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-  .comparison-table th { text-align: left; padding: 10px 12px; background: #F5F5F5; font-weight: 600; border-bottom: 2px solid #ddd; }
-  .comparison-table td { padding: 10px 12px; border-bottom: 1px solid #eee; vertical-align: top; }
-  /* Rating labels — stacked above description text, never inline */
-  .rating { display: block; font-size: 11px; font-weight: 700; margin-bottom: 4px; }
-  .rating.excellent { color: #2E7D32; }
-  .rating.good { color: #1565C0; }
-  .rating.fair { color: #F57F17; }
-  .rating.poor { color: #C62828; }
-
-  /* Impact/Opportunity annotation variant */
-  .ux-note .score { font-weight: 700; font-size: 10px; color: #555; margin-top: 2px; }
-  .ux-note .score .high { color: #2E7D32; }
-  .ux-note .score .low { color: #999; }
-</style>
-<script src="https://mcp.figma.com/mcp/html-to-design/capture.js" async></script>
-</head>
-<body>
-
-<div class="gallery-wrapper">
-
-<div class="section-header">
-  <h1>Plugin Name — UX Review</h1>
-  <p>by Author &bull; vX.X &bull; Description</p>
-</div>
-
-<!-- Optional UX summary -->
-<div class="ux-summary"><strong>Overall:</strong> Summary here.</div>
-
-<div class="sections-container">
-
-  <div class="flow-group">
-    <div class="flow-label">Section Name</div>
-    <div class="screenshots-row">
-      <div class="screen-item">
-        <div class="screen-title"><span class="step-num">1</span>Screen Title</div>
-        <div class="screenshot-card">
-          <img src="plugin-slug/01-screen.png" alt="Screen">
-        </div>
-        <!-- Optional UX notes -->
-        <div class="ux-notes">
-          <div class="ux-note critical">
-            <span class="tag">Issue</span>
-            Description of the issue here.
-          </div>
-          <div class="ux-note positive">
-            <span class="tag">Good</span>
-            Description of what works well.
-          </div>
-        </div>
-      </div>
-      <!-- More screen-items horizontally -->
-    </div>
-  </div>
-
-  <!-- More flow-groups stacked vertically -->
-
-</div>
-
-<!-- Optional: Comparison Conclusion (when reviewing multiple plugins) -->
-<!--
-<div class="comparison-section">
-  <h2>Comparison Conclusion</h2>
-  <table class="comparison-table">
-    <tr><th>Aspect</th><th>Plugin A</th><th>Plugin B</th><th>Plugin C</th></tr>
-    <tr><td>Onboarding</td><td>...</td><td>...</td><td>...</td></tr>
-    <tr><td>Settings UX</td><td>...</td><td>...</td><td>...</td></tr>
-    <tr><td>Email Logs</td><td>...</td><td>...</td><td>...</td></tr>
-    <tr><td>Upsell Approach</td><td>...</td><td>...</td><td>...</td></tr>
-    <tr><td>Overall Score</td><td>...</td><td>...</td><td>...</td></tr>
-  </table>
-</div>
--->
-
-</div><!-- /gallery-wrapper -->
-
-</body>
-</html>
-```
-
-**IMPORTANT: Do NOT add `flex-wrap: wrap` to `.screenshots-row`.** If a section has many screenshots, they should extend horizontally. Figma auto-layout handles overflow correctly. Wrapping breaks the side-by-side intent and makes the gallery look like a vertical list.
-
-**Accent colors** — pick a unique color per plugin based on their brand. Use the plugin's primary brand color for `.step-num` background and `.flow-label` border.
-
-### Verify HTML Before Figma Import
-
-**Do NOT skip this step.** Open the gallery in agent-browser, screenshot it, and show to user:
+Start the local server **once** before the first gallery verification. Keep it alive through Figma import — only kill it in Step 10.
 
 ```bash
-# Start a local server for the screenshots directory
+# Start server (only if not already running)
 python3 -m http.server 3000 --directory screenshots/ &
 
-# Verify server is running
+# Before EACH gallery operation, verify it's still alive:
 curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/gallery-$PLUGIN_SLUG.html
-
-# Open and screenshot the gallery
-agent-browser --session verify open "http://localhost:3000/gallery-$PLUGIN_SLUG.html"
-agent-browser --session verify screenshot /tmp/gallery-preview-$PLUGIN_SLUG.png --full
+# If server died, restart it before proceeding
 ```
 
-Read the screenshot and show to user. **Ask for approval before Figma import.**
+**Do NOT skip verification.** Open the gallery in agent-browser, screenshot it, Read the screenshot, and show to the user. **Ask for approval before Figma import.**
 
 ## Step 9: Import to Figma
 
@@ -688,56 +594,19 @@ kill %1 2>/dev/null
 kill %1 2>/dev/null
 ```
 
-## UX Annotation Guide
+## UX Annotation Reference (for HTML generation)
 
-The primary deliverable is screenshots. Annotations are supplementary — they point the designer in a direction, not prescribe solutions.
+The ux-reviewer subagent handles annotation logic and rubrics. This section covers only what you need for building the gallery HTML.
 
-### Annotation Principles
+**Annotation classes** — map the subagent's `type` field to CSS:
 
-- **Write for designers, not developers.** Focus on what the user experiences, not how to fix it.
-- **Be brief.** 1-2 sentences max per note. If you need more, the observation is too complex — split it.
-- **Filter through the objective.** If the user chose "first-time user experience", don't annotate advanced settings quirks. Stay on-topic.
-- **Don't annotate everything.** 2-4 annotations per screenshot is plenty. Zero is fine for straightforward screens.
+| type | Class | Color |
+|------|-------|-------|
+| `critical` | `.critical` | Red |
+| `observation` | (default) | Orange |
+| `positive` | `.positive` | Green |
 
-### Light Annotations
-
-Color-coded callouts with a tag and brief description:
-
-| Type | Class | Color | Use For |
-|------|-------|-------|---------|
-| Critical | `.critical` | Red | Blockers, dark patterns, data-loss risk |
-| Observation | (default) | Orange | Friction, copy issues, layout concerns |
-| Positive | `.positive` | Green | Good patterns worth noting |
-
-**Tag** (1-2 words): `Friction`, `Overload`, `Copy`, `CTA`, `Layout`, `Upsell`, `Clean`, `Good`, `Navigation`, `Empty State`
-
-### Impact & Opportunity Annotations
-
-Same color-coded callouts, plus a score line. Scores follow these rubrics:
-
-**Impact — How much does this affect the business?**
-
-| Score | Label | Meaning |
-|-------|-------|---------|
-| 5 | Critical | Directly loses users, revenue, or trust. Users abandon or churn. |
-| 4 | High | Hurts activation or conversion. Users get stuck or frustrated enough to seek alternatives. |
-| 3 | Moderate | Creates friction that increases support load or slows adoption. Users notice but push through. |
-| 2 | Low | Minor annoyance. Doesn't change behavior but leaves a negative impression. |
-| 1 | Cosmetic | Polish item. No measurable business effect. |
-
-**Opportunity — How much value can be captured with how little effort?**
-
-| Score | Label | Meaning |
-|-------|-------|---------|
-| 5 | Quick win | Copy change, add a link, CSS fix. Hours of work, immediate user benefit. |
-| 4 | Easy | Small UI addition or restructure. A day or two, clear ROI. |
-| 3 | Moderate | New component or flow change. A sprint, measurable improvement expected. |
-| 2 | Heavy | Significant rebuild or new feature. Multiple sprints, ROI less certain. |
-| 1 | Major | Architecture change or external dependency. Quarter+, speculative payoff. |
-
-Only annotate items where **Impact + Opportunity >= 7** — these are the high-value improvements worth presenting to stakeholders.
-
-Include the rubric tables as a legend at the top of the gallery (inside `.ux-summary`) so anyone reading the review understands what the scores mean.
+**For Impact & Opportunity depth**, add score spans and include the rubric legend in `.ux-summary`:
 
 ```html
 <div class="ux-note critical">
@@ -760,25 +629,26 @@ After the ux-comparator subagent returns its output (Step 7c), generate a separa
 - Include the comparator's verdict: overall winner, winner per dimension, and top 3 differentiators
 - Import to Figma alongside the individual galleries
 
-## Common Mistakes
+## Common Mistakes & Troubleshooting
 
 | Mistake | Fix |
 |---------|-----|
-| Session expired mid-capture | Re-login before each plugin |
-| Other plugin notices in screenshots | Deactivate ALL others first |
-| `text=X` matches multiple elements | Use `snapshot -i` to get `[ref=XX]` IDs |
-| Using `@ref=e21` syntax | Use `[ref=e21]` bracket syntax instead |
 | Squished columns in Figma | Use `width=2200` viewport, `min-width` on columns |
 | Images not loaded in Figma capture | Use `figmadelay=3000` or higher |
-| Local server not running | Check with `curl` before opening capture URL |
-| Gallery layout broken | Verify with agent-browser screenshot BEFORE Figma import |
-| WP-CLI memory exhaustion | Always use `-d "memory_limit=512M"` |
-| Asking user questions across multiple interactions | Gather ALL input in Step 2 in a single AskUserQuestion |
-| Not cleaning up temp user | Always delete claude-reviewer user in Step 10 |
-| Allowlist doesn't take effect | Requires restart — recommend bypass mode instead |
-| Guessed tab URL slug from visible label | Extract actual `href` from DOM — slugs often differ from display names (e.g. "Smart Routing" → `tab=routing`, "Email Controls" → `tab=control`). Use `eval` to extract: `agent-browser --session $SESSION eval "Array.from(document.querySelectorAll('[class*=nav-menu] a, .nav-tab-wrapper a')).map(a => a.textContent.trim() + ' → ' + a.href).join('\\n')"` |
-| Full-page screenshot extremely tall (addons, templates, integrations) | Use viewport-only capture (no `--full`) for pages with long scrollable lists. If `Read` fails on the PNG due to dimension limits, recapture without `--full`. |
-| Comparison table rating badges overlap text | Use `display: block` on `.rating` so labels stack above description text. Never use `display: inline-block` for ratings in table cells. |
-| agent-browser click runs in background on timeout | The page likely navigated. Use `open` to navigate to the expected URL instead of waiting for the click result. |
-| Element UI / Vue radio buttons don't respond to Playwright click | Use `eval` to click `.el-radio-button__inner` elements directly via JS: `agent-browser --session $SESSION eval "document.querySelector('.el-radio-button__inner[textContent]').click()"` |
-| Subagent annotates off-topic screens | Objective enforcement failed. Check that Step 5c filtering was applied and that the ux-reviewer prompt includes the objective with CRITICAL enforcement language. |
+| Comparison table rating badges overlap text | Use `display: block` on `.rating` so labels stack above description. Never `display: inline-block`. |
+| Guessed tab URL slug from visible label | Extract actual `href` from DOM — slugs often differ from display names. Use `eval`: `agent-browser --session $SESSION eval "Array.from(document.querySelectorAll('[class*=nav-menu] a, .nav-tab-wrapper a')).map(a => a.textContent.trim() + ' → ' + a.href).join('\\n')"` |
+| Full-page screenshot extremely tall | Use viewport-only capture (no `--full`) for long scrollable lists. If `Read` fails on the PNG, recapture without `--full`. |
+| agent-browser click runs in background/times out | The page likely navigated. Use `open` to navigate to the expected URL instead of waiting for the click. |
+| Subagent annotates off-topic screens | Objective filtering missed pages. Re-check Step 5 filtering and that the review brief includes the exact objective. |
+
+### SPA / JavaScript Framework Troubleshooting
+
+Plugins built with Vue (Element UI, Fluent UI), React, or other SPA frameworks often break standard agent-browser interactions:
+
+| Problem | Solution |
+|---------|----------|
+| `click` on Vue/React elements times out or does nothing | Use `eval` to click via JS: `agent-browser --session $SESSION eval "document.querySelector('.target-selector').click()"` |
+| `fill` doesn't trigger Vue reactivity | Use `eval` with `dispatchEvent`: `agent-browser --session $SESSION eval "const el = document.querySelector('input'); el.value = 'test'; el.dispatchEvent(new Event('input', {bubbles: true}))"` |
+| Element UI radio buttons / custom controls | Target the inner clickable element: `eval "document.querySelector('.el-radio-button__inner').click()"` |
+| Hash-based routing (no page reload on nav) | Use `open` with the full hash URL rather than clicking nav links |
+| Content loads after JS render | Add a short wait after navigation: `agent-browser --session $SESSION eval "await new Promise(r => setTimeout(r, 2000))"` then `snapshot -i` |

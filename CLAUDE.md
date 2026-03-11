@@ -5,7 +5,8 @@ This repo contains a Claude Code skill and subagent for automating WordPress plu
 ## Structure
 
 - `SKILL.md` — The skill definition. Handles setup, screenshot capture, gallery generation, and Figma import.
-- `agents/ux-reviewer.md` — Prompt template for the UX review subagent. Dispatched as `subagent_type: "general-purpose"` with this file's content inlined into the prompt. Analyzes screenshots through the user's review objective and returns structured annotations with a status (`DONE`, `DONE_WITH_CONCERNS`, `BLOCKED`). Runs without Bash (reads images, writes JSON) so it needs no special permissions.
+- `templates/gallery.html` — HTML gallery template for Figma-compatible screenshot galleries. Referenced by SKILL.md Step 8.
+- `agents/ux-reviewer.md` — Prompt template for the UX review subagent. Dispatched as `subagent_type: "general-purpose"` with this file's content inlined into the prompt. Analyzes screenshots through the user's review objective and returns structured annotations with a manifest and status (`DONE`, `DONE_WITH_CONCERNS`, `BLOCKED`). Runs without Bash (reads images, writes JSON) so it needs no special permissions.
 - `agents/ux-comparator.md` — Prompt template for the comparison subagent. Dispatched as `subagent_type: "general-purpose"` (with `model: "sonnet"` since it's text-only reasoning). Receives each plugin's annotations and metadata, produces a structured comparison table with per-dimension ratings and a verdict. Only used when the user requests a comparison.
 
 ## Environment Paths
@@ -21,6 +22,6 @@ Playground (wp-now) was intentionally removed — its SQLite backend breaks CSS/
 
 - This is a skill file, not application code. Changes are instructions for Claude Code to follow.
 - Keep steps numbered and sequential — the skill is designed to be followed top-to-bottom.
-- The HTML gallery template in Step 8 must remain Figma-compatible (flexbox layout, inline styles, capture script).
+- The HTML gallery template lives in `templates/gallery.html` and must remain Figma-compatible (flexbox layout, inline styles, capture script). Step 8 references this file.
 - Shell command examples use placeholder paths (e.g., `<wp-root>`, `<wp-cli-command>`) for readability — the skill instructs Claude to resolve these to literal paths at runtime.
 - Never use shell variables (`$HOME`, `$PHP_BIN`, etc.) in example commands — this is a deliberate rule to avoid extra permission prompts.

@@ -98,12 +98,17 @@ If more than 30% of screenshots appear unrelated to the objective, report `DONE_
 
 ## Output Format
 
-Return a JSON object with `status`, `concerns` (if any), `screenshots` (array), and `summary`. Each screenshots entry:
+Return a JSON object with `status`, `concerns` (if any), `manifest`, `screenshots` (array), and `summary`. Each screenshots entry:
 
 ```json
 {
   "status": "DONE",
   "concerns": null,
+  "manifest": {
+    "screenshots_reviewed": 11,
+    "screenshots_with_annotations": 9,
+    "off_topic_flagged": 0
+  },
   "screenshots": [
     {
       "screenshot": "01-events-list.png",
