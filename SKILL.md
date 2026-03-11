@@ -7,11 +7,13 @@ description: Use when capturing screenshots of WordPress plugins for UX review, 
 
 Automate screenshot capture of WordPress plugin UIs, generate annotated HTML galleries, and import to Figma for UX review.
 
-## Step 0: Permissions (DO THIS FIRST)
+## Step 0: Permissions (DO THIS FIRST — MANDATORY)
 
-This skill is **extremely command-heavy** — dozens of sequential bash commands for browser automation, WP-CLI, local server, and file operations. Without permission bypass, the user must manually approve every single one, which makes the workflow painful.
+This skill is **extremely command-heavy** — dozens of sequential bash commands for browser automation, WP-CLI, local server, and file operations.
 
-**Always show this warning and use AskUserQuestion with three options:**
+**You MUST use AskUserQuestion here and WAIT for the user's response. Do NOT proceed, do NOT run any Bash commands, do NOT explore the codebase, do NOT skip this step. No matter what mode you think you're in, always ask.**
+
+Ask with these three options:
 
 > **Heads up:** This review involves 50+ bash commands (browser automation, WP-CLI, screenshots, local servers). Each one needs manual approval unless you're in bypass mode.
 >
@@ -21,11 +23,12 @@ This skill is **extremely command-heavy** — dozens of sequential bash commands
 2. **Let me enable it first (Recommended)** — exit, restart with `claude --dangerously-skip-permissions`, then re-invoke the skill
 3. **Continue with manual approvals** — I'll approve each command individually (slow but works)
 
-**If user chooses option 2:** Tell them to run `claude --dangerously-skip-permissions` and re-invoke the skill. Stop here.
+**After the user responds:**
+- **Option 1:** Proceed to Step 1.
+- **Option 2:** Tell them to run `claude --dangerously-skip-permissions` and re-invoke the skill. **Stop here — do nothing else.**
+- **Option 3:** Proceed to Step 1, but warn it will be slow (50+ individual approvals). Do NOT try to set up allowlists.
 
-**If user chooses option 3:** Do NOT try to set up allowlists (they require a restart anyway and the patterns are too complex to cover all commands). Just proceed and let them approve each command.
-
-**Only move to Step 1 after the user confirms they are ready to proceed.**
+**Do NOT move to Step 1 until the user has explicitly chosen an option.**
 
 ## CRITICAL: No Shell Variables in Bash Commands
 
@@ -153,6 +156,11 @@ Combine these with the environment questions from Step 1 whenever possible. The 
 - Let the user type custom plugin names if not in the list
 - For local sites: if a plugin isn't installed, offer to install it via WP-CLI
 
+**Question: Comparison (only if 2+ plugins selected)**
+- Ask: "Would you like a side-by-side comparison of these plugins?"
+- Options: "Yes — include a comparison table" / "No — just individual reviews"
+- If yes, a comparison gallery will be generated after individual reviews using the ux-comparator subagent
+
 **Question: Review objective**
 - Ask: "What's the objective for this review?"
 - Options:
@@ -174,16 +182,15 @@ The objective shapes what gets annotated. All annotations should be viewed throu
   - **Light** — brief colored callouts (positive/critical/observation) with 1-2 sentence descriptions. Points the designer in a direction without being prescriptive.
   - **Impact & Opportunity** — each annotation scored on Impact (1-5) and Opportunity (1-5). Highlights where the biggest business-value improvements are. Best for presenting findings to stakeholders.
 
-If multiple plugins are selected, always generate a comparison table (no need to ask).
-
 **After gathering input, print a summary:**
 
 > **UX Review Plan:**
-> - Plugin(s): Sugar Calendar Lite v3.10.1
+> - Plugin(s): Amelia v1.1.5 (by TMS), Fluent Bookings v1.0.3 (by WPManageNinja)
 > - Objective: General review
+> - Comparison: Yes
 > - Annotations: Light
 > - Figma import: Yes (fileKey: XXXXX)
-> - Estimated screens: ~10-15
+> - Estimated screens: ~10-15 per plugin
 >
 > I'll now work through the review autonomously. I'll check in when the HTML gallery is ready for your approval before importing to Figma.
 
@@ -266,6 +273,26 @@ agent-browser --session $SESSION click "@ref=e21"
 10. Addons
 ```
 
+## Step 5b: Collect Plugin Metadata
+
+Gather metadata for each plugin **before** taking screenshots. This goes into gallery headers and provides context to the ux-reviewer subagent.
+
+**For local sites (WP-CLI available):**
+```bash
+<wp-cli-command> plugin list --fields=name,version,author,description,status --format=json --path="<wp-root>"
+```
+Extract the target plugin's version, author, and description from the output.
+
+**For remote sites (no WP-CLI):**
+1. Navigate to the Plugins page: `agent-browser --session <session> open "<site-url>/wp-admin/plugins.php"`
+2. Use `snapshot -i` to find each target plugin's row
+3. Extract version, author, and description from the plugin row text
+4. If the Plugins page is inaccessible (permissions), ask the user for plugin versions or note "version unknown"
+
+**Store metadata** for use in:
+- Gallery header (`<p>` tag under `<h1>`: "by Author &bull; vX.X &bull; Description")
+- Subagent prompt context (passed to both ux-reviewer and ux-comparator)
+
 ## Step 6: Handle Interruptions
 
 Dismiss these BEFORE taking screenshots:
@@ -303,6 +330,54 @@ agent-browser --session $SESSION screenshot screenshots/$PLUGIN_SLUG/XX-descript
 - If focused on specific flows, only capture screens relevant to those flows
 
 **If the user specified focus areas**, prioritize those screens and add more detail (e.g., capture different states, empty vs populated, error states).
+
+## Step 7b: UX Review (Subagent)
+
+After all screenshots are captured for a plugin, dispatch the **ux-reviewer** subagent to analyze them. Do NOT analyze screenshots yourself — delegate to the agent.
+
+**Before dispatching, inform the user:**
+
+> Dispatching UX review agents now. No action needed on your side — I'll check in when the galleries are ready for your approval.
+
+**Dispatch with the Agent tool:**
+- `subagent_type`: Use the `ux-reviewer` agent
+- Provide in the prompt:
+  1. **Screenshot file paths** — list every PNG captured in Step 7
+  2. **Review objective** — the exact objective from Step 2 (general, first-time UX, monetization audit, or custom text)
+  3. **Annotation depth** — "light" or "impact-opportunity" from Step 2
+  4. **Plugin metadata** — name, version, author, description, and what the plugin does (from Step 5b). This context is essential — without it the agent can't evaluate the UI in the right context.
+  5. **Page list** — the full list of pages/tabs discovered in Step 5, so the agent understands the plugin's navigation structure even for screens it doesn't see
+  6. **Environment** — local or remote, and the site URL (helps the agent understand the context)
+
+**For multi-plugin reviews:** Dispatch one ux-reviewer agent per plugin in parallel. Each agent analyzes one plugin's screenshots independently.
+
+The agent returns:
+- A JSON array of screenshots with annotations, grouped into sections
+- An overall summary for the gallery banner (3-5 bullet executive summary covering: key strengths, key weaknesses, and recommended priorities)
+
+Use this output to populate annotations in the HTML gallery (Step 8).
+
+**If annotation depth is "none":** Skip this step entirely — go straight to Step 8 with screenshots only.
+
+## Step 7c: UX Comparison (Subagent — Multi-Plugin Only)
+
+**Only run this step if the user requested a comparison in Step 2.**
+
+After ALL ux-reviewer agents have completed, dispatch the **ux-comparator** subagent.
+
+**Dispatch with the Agent tool:**
+- `subagent_type`: Use the `ux-comparator` agent
+- Provide in the prompt:
+  1. **All plugin annotations** — the full JSON output from each ux-reviewer agent
+  2. **All plugin metadata** — name, version, author, description for each plugin (from Step 5b)
+  3. **Review objective** — the exact objective from Step 2
+  4. **Annotation depth** — from Step 2
+
+The agent returns:
+- A comparison table with per-dimension ratings and justifications
+- A verdict with winner-per-dimension, overall winner, and top differentiators
+
+Use this output to build the comparison gallery in Step 8.
 
 ## Step 8: Generate HTML Gallery
 
@@ -566,13 +641,15 @@ Include the rubric tables as a legend at the top of the gallery (inside `.ux-sum
 
 ## Comparison Conclusion (Multi-Plugin Reviews)
 
-When the user opts for comparison, generate a separate HTML page **after all plugins are captured**:
+**Only generate if the user requested a comparison in Step 2.**
+
+After the ux-comparator subagent returns its output (Step 7c), generate a separate HTML page:
 
 - File: `screenshots/gallery-comparison.html`
-- Include a comparison table rating each plugin across key UX dimensions
-- Dimensions: Onboarding, Settings Organization, Core Feature UX, Empty States, Upsell Approach, Visual Polish, Navigation, Overall Score
-- Use a 1-5 scale or qualitative labels (Poor / Fair / Good / Excellent)
-- Add a brief written summary highlighting the winner per category and overall
+- Use the ux-comparator's JSON output to populate the comparison table — do NOT invent ratings yourself
+- Dimensions come from the comparator (which selects them based on the review objective)
+- Ratings use qualitative labels (Poor / Fair / Good / Excellent) with justification text
+- Include the comparator's verdict: overall winner, winner per dimension, and top 3 differentiators
 - Import to Figma alongside the individual galleries
 
 ## Common Mistakes
