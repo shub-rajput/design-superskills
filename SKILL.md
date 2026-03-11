@@ -75,10 +75,20 @@ Then run prerequisites:
 | Check | How | Fix |
 |-------|-----|-----|
 | **agent-browser** | `which agent-browser` | `npx skills add https://github.com/vercel-labs/agent-browser --skill agent-browser` |
-| **Figma MCP** | Check for `mcp__figma__get_design_context` or `mcp__figma__generate_figma_design` in available tools | User must configure Figma MCP server |
+| **Figma MCP** | Check for `mcp__figma__get_design_context` or `mcp__figma__generate_figma_design` in available tools (must be the remote Figma MCP, not the Claude AI built-in one) | See install instructions below |
 | **Working directory** | Check for `wp-config.php` or `app/public/wp-config.php` in the given path | Ask user for correct path |
 | **WP-CLI** | See "WP-CLI Setup" section below | Only needed if creating temp user or managing plugins |
 | **Site is running** | `curl -s -o /dev/null -w "%{http_code}" <site-url>` | User must start their local server |
+
+#### Figma MCP Setup (Only if user wants Figma import)
+
+The skill requires the **remote Figma MCP server**, not the Claude AI built-in Figma integration. If the `mcp__figma__generate_figma_design` tool is not available, tell the user to run:
+
+```
+claude mcp add --scope user --transport http figma https://mcp.figma.com/mcp
+```
+
+Then restart Claude Code. The remote MCP provides `generate_figma_design` which is needed for the HTML-to-Figma capture workflow. The Claude AI built-in Figma tools (`mcp__claude_ai_Figma__*`) do NOT support this.
 
 #### WP-CLI Setup (Local Sites Only)
 
