@@ -1,7 +1,6 @@
 ---
 name: ux-reviewer
-description: |
-  Use this agent to analyze WordPress plugin screenshots for UX issues. Dispatched after screenshot capture is complete. Receives screenshots, the user's review objective, and annotation depth — returns structured annotations for the HTML gallery. Does not need Bash access — reads images and writes analysis only.
+description: Analyzes WordPress plugin screenshots for UX issues, returning structured annotations for gallery generation.
 model: inherit
 ---
 

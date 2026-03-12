@@ -1,7 +1,6 @@
 ---
 name: ux-comparator
-description: |
-  Use this agent to produce a structured comparison of multiple WordPress plugins after individual UX reviews are complete. Receives each plugin's annotations, metadata, and the review objective — returns a comparison table with per-dimension ratings and a written verdict. Does not need Bash access.
+description: Compares multiple WordPress plugins after individual UX reviews, returning a comparison table with ratings and verdict.
 model: inherit
 ---
 

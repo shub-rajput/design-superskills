@@ -1,7 +1,6 @@
 ---
 name: marketing-comparator
-description: |
-  Use this agent to produce a structured marketing comparison of multiple websites after individual reviews are complete. Receives each site's annotations, review briefs, and the review objective — returns a comparison table with per-dimension ratings and a written verdict. Does not need Bash access.
+description: Compares multiple websites after individual marketing reviews, returning a comparison table with ratings and verdict.
 model: inherit
 ---
 

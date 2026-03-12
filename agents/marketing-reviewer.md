@@ -1,7 +1,6 @@
 ---
 name: marketing-reviewer
-description: |
-  Use this agent to analyze public website screenshots for marketing and design effectiveness. Dispatched after screenshot capture is complete. Receives screenshots, the user's review objective, and annotation depth — returns structured annotations for the HTML gallery. Does not need Bash access — reads images and writes analysis only.
+description: Analyzes public website screenshots for marketing and design effectiveness, returning structured annotations for gallery generation.
 model: inherit
 ---
 

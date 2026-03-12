@@ -15,6 +15,8 @@ design-superskills/
 │   ├── ux-comparator.md              # Side-by-side plugin comparison
 │   ├── marketing-reviewer.md         # Marketing/design analysis of public websites
 │   └── marketing-comparator.md       # Side-by-side website comparison
+├── shared/
+│   └── common-steps.md              # Shared steps referenced by both skills (permissions, gallery, Figma, troubleshooting)
 ├── templates/
 │   └── gallery.html                  # Shared Figma-compatible HTML gallery template
 ├── hooks/
