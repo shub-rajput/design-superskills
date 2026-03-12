@@ -25,10 +25,15 @@ Both skills generate annotated HTML galleries with grouped sections, UX/marketin
 
 ## Installation
 
-**1. Add the marketplace and install the plugin:**
+**1. Add the marketplace:**
 
-```bash
+```
 /plugin marketplace add shub-rajput/design-superskills
+```
+
+**2. Install the plugin:**
+
+```
 /plugin install design-superskills@design-superskills
 ```
 
