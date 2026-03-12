@@ -6,7 +6,10 @@
   "plugins": [
     {
       "name": "design-superskills",
-      "source": "./",
+      "source": {
+        "source": "github",
+        "repo": "shub-rajput/design-superskills"
+      },
       "description": "Design research: capture screenshots of WP plugins and websites, generate annotated galleries, import to Figma",
       "version": "1.0.1",
       "author": {
