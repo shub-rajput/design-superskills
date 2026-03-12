@@ -60,7 +60,9 @@ Claude should automatically invoke the **website-research** skill.
 
 ## Updating
 
-Run `/plugin`, find **design-superskills** under the **Installed** tab, and select **Update now**. Then restart Claude Code.
+**Auto-update (recommended):** Claude Code can automatically update the marketplace and installed plugins at session startup. Since this is a third-party marketplace, auto-update is **disabled by default** — to enable it, run `/plugin marketplaces`, select **design-superskills**, and choose **Enable auto-update**. When an update is applied, you'll be prompted to run `/reload-plugins`.
+
+**Manual update:** Run `/plugin`, find **design-superskills** under the **Installed** tab, and select **Update now**. Then run `/reload-plugins` to load the new version.
 
 ---
 
