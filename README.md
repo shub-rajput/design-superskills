@@ -60,11 +60,7 @@ Claude should automatically invoke the **website-research** skill.
 
 ## Updating
 
-```
-/plugin update design-superskills@design-superskills
-```
-
-Then restart Claude Code.
+Run `/plugin`, find **design-superskills** under the **Installed** tab, and select **Update now**. Then restart Claude Code.
 
 ---
 
