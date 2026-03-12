@@ -33,8 +33,8 @@
   .screen-title { padding: 10px 4px 8px; font-size: 13px; font-weight: 500; color: #555; }
   .step-num { display: inline-block; background: ACCENT_COLOR; color: white; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 4px; margin-right: 8px; }
 
-  .screenshot-card { background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow: hidden; }
-  .screenshot-card img { width: 100%; display: block; }
+  .screenshot-card { background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow: hidden; line-height: 0; }
+  .screenshot-card img { width: 100%; display: block; /* Chunked screenshots stack seamlessly — no gap between parts */ }
 
   /* UX annotation callouts — vertically stacked label + description */
   .ux-notes { display: flex; flex-direction: column; gap: 10px; margin-top: 10px; }

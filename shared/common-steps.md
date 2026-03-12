@@ -99,6 +99,112 @@ agent-browser --session <session> click "@ref=e21"
 
 **Always use `snapshot -i`** to discover the correct ref before clicking. Never guess selectors.
 
+## Screenshot Capture Strategy
+
+### Wait for Images to Load
+
+Pages with lazy-loaded images, hero banners, or heavy assets need time to render before capture. **Always do this before taking any screenshot:**
+
+1. **Scroll the entire page top-to-bottom first** — this triggers lazy-loaded images and deferred content:
+```bash
+agent-browser --session <session> eval "(async () => { const h = document.body.scrollHeight; const step = window.innerHeight; for (let y = 0; y < h; y += step) { window.scrollTo(0, y); await new Promise(r => setTimeout(r, 400)); } window.scrollTo(0, 0); })()"
+```
+**Note:** `agent-browser eval` does NOT support top-level `await`. Always wrap async code in `(async () => { ... })()`.
+
+2. **Wait for all visible images to finish loading:**
+```bash
+agent-browser --session <session> eval "Promise.all(Array.from(document.images).filter(img => !img.complete).map(img => new Promise(r => { img.onload = img.onerror = r; })))"
+```
+
+3. **Then take the screenshot** (either single or chunked — see below).
+
+If a page still shows placeholder images after this, add an extra fixed wait:
+```bash
+agent-browser --session <session> eval "await new Promise(r => setTimeout(r, 3000))"
+```
+
+### Chunked Capture for Long Pages
+
+Full-page screenshots of long pages produce massive PNGs that are slow in the gallery and extremely slow in Figma. **Set a tall viewport and split long pages into chunks that stitch in the HTML gallery.**
+
+**When to chunk:** If page height > 4× default viewport height (~2900px+), use chunked capture. Otherwise, use a single `--full` screenshot.
+
+**Step 1 — Set a tall viewport:**
+
+Double the viewport height before capturing. This makes each chunk cover more content (fewer chunks, faster Figma loading):
+```bash
+agent-browser set viewport 1280 1440 --session <session>
+```
+This sets the viewport to 1280×1440 (default is 1280×720). Verify with:
+```bash
+agent-browser --session <session> eval "window.innerHeight"
+```
+
+**Step 2 — Measure the page:**
+```bash
+agent-browser --session <session> eval "JSON.stringify({ scrollHeight: document.body.scrollHeight, viewportHeight: window.innerHeight })"
+```
+
+**Step 3 — Capture chunks:**
+
+**Important:** Always use **absolute paths** for screenshot destinations. `agent-browser screenshot` saves relative to its own working directory, which may differ from Claude's working directory. Example: `/Users/jane/project/screenshots/slug/XX-desc-p1.png`.
+
+Scroll to each position and take a viewport screenshot (no `--full` flag). Step size = viewport height (1440px). No overlap between chunks.
+
+```bash
+# Chunk 1: top of page
+agent-browser --session <session> eval "window.scrollTo(0, 0)"
+agent-browser --session <session> eval "(async () => { await new Promise(r => setTimeout(r, 300)); })()"
+agent-browser --session <session> screenshot screenshots/<slug>/XX-description-p1.png
+
+# Chunk 2: scroll down by viewport height
+agent-browser --session <session> eval "window.scrollTo(0, 1440)"
+agent-browser --session <session> eval "(async () => { await new Promise(r => setTimeout(r, 300)); })()"
+agent-browser --session <session> screenshot screenshots/<slug>/XX-description-p2.png
+
+# Chunk 3: scroll down another step
+agent-browser --session <session> eval "window.scrollTo(0, 2880)"
+agent-browser --session <session> eval "(async () => { await new Promise(r => setTimeout(r, 300)); })()"
+agent-browser --session <session> screenshot screenshots/<slug>/XX-description-p3.png
+
+# Continue: scrollTo(0, 1440 * chunkIndex) until scrollY + viewportHeight >= scrollHeight
+```
+
+**No overlap between chunks.** Overlapping causes visible text/image duplication at seam boundaries. Clean cuts at viewport boundaries are preferable — most page sections have natural whitespace that absorbs the seam.
+
+**Naming convention:** Append `-p1`, `-p2`, `-p3` etc. to the base filename. E.g., `03-settings-p1.png`, `03-settings-p2.png`.
+
+For the **last chunk**, scroll to the very bottom to capture the footer:
+```bash
+agent-browser --session <session> eval "window.scrollTo(0, document.body.scrollHeight - window.innerHeight)"
+```
+
+**Step 3 — Verify each chunk:** `Read` each PNG to confirm it captured correctly.
+
+### Gallery HTML for Chunked Screenshots
+
+In the gallery, stack all chunks for a screen inside a single `.screenshot-card`. The template's `line-height: 0` on `.screenshot-card` and `display: block` on `img` ensure zero gap between parts:
+
+```html
+<div class="screenshot-card">
+  <img src="slug/03-settings-p1.png" alt="Settings (1/3)">
+  <img src="slug/03-settings-p2.png" alt="Settings (2/3)">
+  <img src="slug/03-settings-p3.png" alt="Settings (3/3)">
+</div>
+```
+
+This renders as one continuous image. Annotations (`.ux-notes`) go after the card as usual — they apply to the full screen, not individual chunks.
+
+**In the review brief and subagent prompt:** List chunked screenshots grouped together so the reviewer knows they form one logical screen:
+```markdown
+### 03-settings (3 parts)
+**Screen:** Plugin settings page
+**Parts:** 03-settings-p1.png, 03-settings-p2.png, 03-settings-p3.png
+**Journey:** Settings page is very long — required scrolling through 4 sections...
+```
+
+The reviewer subagent should Read all parts for a screen and analyze them as one continuous page.
+
 ## Generate HTML Gallery
 
 Read the template at `templates/gallery.html` (relative to this skill's repo root). Copy it to `screenshots/gallery-<slug>.html` and customize:
@@ -190,6 +296,7 @@ After the comparator subagent returns its output, generate a separate HTML page:
 | Squished columns in Figma | Use `width=2200` viewport, `min-width` on columns |
 | Images not loaded in Figma capture | Use `figmadelay=3000` or higher |
 | Comparison table rating badges overlap text | Use `display: block` on `.rating` so labels stack above description. Never `display: inline-block`. |
-| Full-page screenshot extremely tall | Use viewport-only capture (no `--full`) for long scrollable lists. If `Read` fails on the PNG, recapture without `--full`. |
+| Full-page screenshot extremely tall | Use chunked capture — see "Screenshot Capture Strategy" section above. Scroll by 2× viewport per chunk, no overlap, stitch in gallery HTML. |
+| Images not loaded in screenshots | Always run the scroll-to-bottom + wait-for-images sequence before capturing — see "Wait for Images to Load" above. |
 | agent-browser click runs in background/times out | The page likely navigated. Use `open` to navigate to the expected URL instead of waiting for the click. |
 | Gallery shows broken image paths | Verify the `src` paths in the HTML match the actual screenshot filenames in the screenshots directory. |

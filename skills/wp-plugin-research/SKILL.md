@@ -318,16 +318,19 @@ Create the screenshots directory:
 mkdir -p screenshots/<plugin-slug>
 ```
 
-For each screen/tab:
-```bash
-agent-browser --session <session> screenshot screenshots/<plugin-slug>/XX-description.png --full
-```
+For each screen/tab, **follow `shared/common-steps.md` → "Screenshot Capture Strategy"** — this covers image loading waits and chunked capture for long pages.
+
+**Quick summary of the capture flow:**
+1. Set tall viewport: `agent-browser set viewport 1280 1440 --session <session>`
+2. Scroll the full page top-to-bottom to trigger lazy images (see common-steps for the eval script)
+3. Wait for all images to finish loading
+4. Measure page height — if > 4× viewport (~5800px+), use chunked capture (scroll by 1440px per chunk, no overlap, named `XX-description-p1.png`, `-p2.png`, etc.)
+5. If page is short enough, use a single `--full` screenshot
 
 **Rules:**
-- Use `--full` flag for full-page capture **UNLESS the page is a long scrollable list** (addons galleries, template libraries, integration lists, etc.). For those, use viewport-only (no `--full`) to avoid extremely tall screenshots that become unreadable at gallery scale.
-- Naming: `XX-description.png` (01-events-list.png, 02-add-new-event.png, etc.)
+- Naming: `XX-description.png` (01-events-list.png, 02-add-new-event.png, etc.). For chunks: `XX-description-p1.png`, `-p2.png`, etc.
 - Save to `screenshots/<plugin-slug>/` directory
-- After each screenshot, `Read` the PNG file to verify it captured correctly. If the Read fails due to image dimensions exceeding limits, the screenshot is too tall — recapture without `--full`.
+- After each screenshot, `Read` the PNG file to verify it captured correctly. If the Read fails due to image dimensions exceeding limits, the screenshot is too tall — switch to chunked capture.
 - If a page has tabs, capture each tab as a separate screenshot
 - If a page has modals or dropdowns worth showing, open them and capture separately
 
@@ -384,11 +387,12 @@ After all screenshots are captured for a plugin, write a **review brief** markdo
 **Screen:** <What this screen shows>
 **Journey:** <1-3 sentences of what you observed navigating to/interacting with this screen>
 
-### 02-sendgrid-config.png
+### 02-sendgrid-config (3 parts)
 **Screen:** <What this screen shows>
-**Journey:** <1-3 sentences>
+**Parts:** 02-sendgrid-config-p1.png, 02-sendgrid-config-p2.png, 02-sendgrid-config-p3.png
+**Journey:** <1-3 sentences — note that it was a long page requiring chunked capture>
 
-<!-- Continue for every screenshot -->
+<!-- Continue for every screenshot. Use the multi-part format for chunked captures. -->
 ```
 
 ## Step 7b: UX Review (Subagent)

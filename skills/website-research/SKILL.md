@@ -115,13 +115,20 @@ Use a URL-derived slug (e.g., `stripe.com` → `stripe`, `squareup.com` → `squ
 
 ```bash
 agent-browser --session <session> open "<url>"
-agent-browser --session <session> screenshot screenshots/<site-slug>/XX-description.png --full
 ```
 
+After navigating, **follow `shared/common-steps.md` → "Screenshot Capture Strategy"** — this covers image loading waits and chunked capture for long pages.
+
+**Quick summary of the capture flow:**
+1. Set tall viewport: `agent-browser set viewport 1280 1440 --session <session>`
+2. Scroll the full page top-to-bottom to trigger lazy images (see common-steps for the eval script)
+3. Wait for all images to finish loading
+4. Measure page height — if > 4× viewport (~5800px+), use chunked capture (scroll by 1440px per chunk, no overlap, named `XX-description-p1.png`, `-p2.png`, etc.)
+5. If page is short enough, use a single `--full` screenshot
+
 **Rules:**
-- Use `--full` flag for full-page capture **UNLESS the page is very long** (blog archives, template libraries, integration directories). For those, use viewport-only (no `--full`).
-- Naming: `XX-description.png` (01-homepage.png, 02-pricing.png, 03-features.png, etc.)
-- After each screenshot, `Read` the PNG file to verify it captured correctly. If the Read fails due to image dimensions exceeding limits, recapture without `--full`.
+- Naming: `XX-description.png` (01-homepage.png, 02-pricing.png, 03-features.png, etc.). For chunks: `XX-description-p1.png`, `-p2.png`, etc.
+- After each screenshot, `Read` the PNG file to verify it captured correctly. If the Read fails due to image dimensions exceeding limits, switch to chunked capture.
 
 See `shared/common-steps.md` → "agent-browser Click Syntax" for ref syntax rules.
 
