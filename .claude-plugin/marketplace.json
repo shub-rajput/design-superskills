@@ -1,0 +1,21 @@
+{
+  "name": "design-superskills",
+  "owner": {
+    "name": "Shubhang Rajput"
+  },
+  "plugins": [
+    {
+      "name": "design-superskills",
+      "source": "./",
+      "description": "Design research: capture screenshots of WP plugins and websites, generate annotated galleries, import to Figma",
+      "version": "1.0.1",
+      "author": {
+        "name": "Shubhang Rajput"
+      },
+      "homepage": "https://github.com/shub-rajput/design-superskills",
+      "repository": "https://github.com/shub-rajput/design-superskills",
+      "license": "MIT",
+      "keywords": ["design", "ux", "screenshots", "wordpress", "figma", "research", "marketing"]
+    }
+  ]
+}
