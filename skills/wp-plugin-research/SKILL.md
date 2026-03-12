@@ -1,9 +1,9 @@
 ---
-name: wp-plugin-ux-review
+name: wp-plugin-research
 description: Use when capturing screenshots of WordPress plugins for UX review, comparing competitor plugin UIs, creating annotated HTML galleries for Figma import, or when the user mentions plugin UX review, competitor analysis, or screenshot galleries.
 ---
 
-# WP Plugin UX Review
+# WP Plugin Research
 
 Automate screenshot capture of WordPress plugin UIs, generate annotated HTML galleries, and import to Figma for UX review.
 
