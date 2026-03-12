@@ -7,8 +7,8 @@
     {
       "name": "design-superskills",
       "source": {
-        "source": "github",
-        "repo": "shub-rajput/design-superskills"
+        "source": "url",
+        "url": "https://github.com/shub-rajput/design-superskills.git"
       },
       "description": "Design research: capture screenshots of WP plugins and websites, generate annotated galleries, import to Figma",
       "version": "1.0.2",
