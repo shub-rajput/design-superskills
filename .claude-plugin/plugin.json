@@ -1,7 +1,7 @@
 {
   "name": "design-superskills",
   "description": "Design research skills: capture screenshots of WP plugins and websites, generate annotated galleries, import to Figma",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "author": {
     "name": "Shubhang Rajput"
   },
