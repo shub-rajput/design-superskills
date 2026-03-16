@@ -14,37 +14,71 @@ Ask with these options:
 >
 > How would you like to proceed?
 
-1. **Add permissions to settings (Recommended)** — I'll add the required tool permissions to your project's `.claude/settings.json`, then you restart Claude Code and re-invoke the skill
+1. **Add permissions to settings (Recommended)** — I'll add the required tool permissions to this project's `.claude/settings.local.json`, then you restart Claude Code and re-invoke the skill
 2. **Use bypass mode** — exit, restart with `claude --dangerously-skip-permissions`, then re-invoke the skill
 3. **I've already set up permissions or bypass mode** — proceed immediately
 4. **Continue with manual approvals** — I'll approve each command individually (slow but works)
 
 **After the user responds:**
 
-- **Option 1:** Read the user's `.claude/settings.json` (create if it doesn't exist). Merge the following permissions into the `permissions.allow` array, preserving any existing entries and all other settings (especially `enabledPlugins`):
+- **Option 1:** Read the project's `.claude/settings.local.json` (create if it doesn't exist). Merge the following permissions into the `permissions.allow` array, preserving any existing entries and all other settings.
+
+### Permission pattern syntax
+
+Use `Bash(command *)` with a **space** before the wildcard. The colon syntax (`Bash(command:*)`) is deprecated per Claude Code docs:
+
+> The legacy `:*` suffix syntax is equivalent to ` *` but is deprecated.
+
+Shell operator awareness (also from the docs):
+
+> Claude Code is aware of shell operators (like `&&`) so a prefix match rule like `Bash(safe-cmd *)` won't give it permission to run the command `safe-cmd && other-cmd`.
+
+This means commands with `&&`, `||`, `|`, `&`, or `$VARIABLE` will NOT match any wildcard permission rule. The skill already avoids these (see "No Shell Variables" section below), but a few edge cases remain — documented in the "Commands that will still prompt" table.
+
+### Core permissions (both skills)
 
 ```json
 {
   "permissions": {
     "allow": [
-      "Bash(agent-browser:*)",
-      "Bash(python3 -m http.server:*)",
-      "Bash(curl -s:*)",
-      "Bash(mkdir -p screenshots:*)",
-      "Bash(mkdir -p screenshots/*)",
-      "Bash(kill:*)",
-      "Bash(open http:*)",
-      "Bash(cat > screenshots:*)"
+      "Bash(agent-browser *)",
+      "Bash(agent-browser set viewport *)",
+      "Bash(python3 -m http.server *)",
+      "Bash(curl *)",
+      "Bash(mkdir *)",
+      "Bash(kill *)",
+      "Bash(open http*)",
+      "Bash(cat > screenshots*)",
+      "Bash(which *)",
+      "Bash(sleep *)",
+      "Bash(rm *)",
+      "Bash(lsof -i *)"
     ]
   }
 }
 ```
 
-**For wp-plugin-research, also add:**
+### Additional permissions for wp-plugin-research
+
+Also merge these when the user is running the wp-plugin-research skill:
+
 ```json
-"Bash(chmod +x:*)",
-"Bash(screenshots/wp:*)"
+"Bash(chmod +x *)",
+"Bash(screenshots/wp *)",
+"Bash(wp *)"
 ```
+
+### Commands that will still prompt (unavoidable)
+
+These use shell operators and cannot be pre-approved — Claude Code blocks them by design:
+
+| Command | Why it prompts | Skill workaround |
+|---------|---------------|------------------|
+| `python3 -m http.server 3000 &` | `&` is a shell operator | Use `run_in_background: true` on the Bash tool call instead of trailing `&` |
+| `agent-browser snapshot -i 2>&1 \| grep "keyword"` | `\|` pipe operator | Run `agent-browser snapshot -i` alone and search the output directly |
+| `cat > file <<'HEREDOC' ... HEREDOC` | Heredoc syntax | May still prompt — user approves once per session |
+
+These local project permissions merge with whatever the user has in their global `~/.claude/settings.json`. Deny rules at any level override allow rules.
 
 After writing, tell the user: "Permissions added. Please restart Claude Code (`/exit` then relaunch) and re-invoke the skill." **Stop here — do nothing else.**
 

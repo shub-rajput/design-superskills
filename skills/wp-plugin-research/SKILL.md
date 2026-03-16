@@ -30,7 +30,7 @@ Automate screenshot capture of WordPress plugin UIs, generate annotated HTML gal
 
 ## Step 0: Permissions (DO THIS FIRST — MANDATORY)
 
-**Read `shared/common-steps.md` → "Permissions" and "No Shell Variables in Bash Commands" sections.** Follow those instructions exactly. For this skill, also add these extra permissions in Option 1: `"Bash(chmod +x:*)"` and `"Bash(screenshots/wp:*)"`.
+**Read `shared/common-steps.md` → "Permissions" and "No Shell Variables in Bash Commands" sections.** Follow those instructions exactly. For this skill, also add the extra wp-plugin-research permissions listed in the "Additional permissions" subsection.
 
 ## Step 1: Choose Environment
 
