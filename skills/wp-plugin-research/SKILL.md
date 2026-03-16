@@ -30,7 +30,7 @@ Automate screenshot capture of WordPress plugin UIs, generate annotated HTML gal
 
 ## Step 0: Permissions (DO THIS FIRST — MANDATORY)
 
-**Read `shared/common-steps.md` → "Permissions" and "No Shell Variables in Bash Commands" sections.** Follow those instructions exactly. For this skill, also add the extra wp-plugin-research permissions listed in the "Additional permissions" subsection.
+**Read `shared/common-steps.md` → "Permissions" and "No Shell Variables in Bash Commands" sections.** Follow those instructions exactly. This skill requires both the core permissions AND the additional wp-plugin-research permissions listed there.
 
 ## Step 1: Choose Environment
 
@@ -92,15 +92,20 @@ If this works, use `wp` directly for all commands.
 After resolving the WP-CLI command (with PHP path, socket, etc.), write a wrapper script to avoid repeating 200+ character commands:
 
 ```bash
-# Write wrapper script with resolved paths
-cat > screenshots/wp <<'WRAPPER'
+# Write wrapper script — always in working directory, never inside the screenshots folder
+cat > ./wp-cli-local <<'WRAPPER'
 #!/bin/bash
 "<resolved-php-path>" -d "mysqli.default_socket=<resolved-socket>" -d "memory_limit=512M" "<resolved-wp-cli-path>" "$@" --path="<resolved-wp-root>"
 WRAPPER
-chmod +x screenshots/wp
+chmod +x ./wp-cli-local
 ```
 
-Test it: `screenshots/wp option get siteurl`. Use `screenshots/wp` for ALL subsequent WP-CLI commands.
+Test it: `./wp-cli-local option get siteurl`. Use `./wp-cli-local` for ALL subsequent WP-CLI commands.
+
+**Why this path:** The wrapper lives at `./wp-cli-local` in the working directory — never inside the screenshots folder and never at an absolute path. This ensures:
+- The permission `Bash(./wp-cli-local *)` always matches regardless of where screenshots are saved
+- No spaces in the path (avoids "backslash-escaped whitespace" warnings)
+- Works even if the user specifies a custom screenshots directory like `/Users/.../competitor-research`
 
 #### Discover Site URL (if user didn't provide one)
 
@@ -300,7 +305,7 @@ Some plugins gate their entire UI behind a welcome/setup screen that won't dismi
 
 1. **Direct URL navigation** — Skip the gate by navigating to a known admin page: `agent-browser --session <session> open "<site-url>/wp-admin/admin.php?page=<plugin-slug>-settings"`
 2. **JS dismiss** — Use `eval` to find and click hidden dismiss/skip elements: `agent-browser --session <session> eval "document.querySelector('[class*=skip], [class*=dismiss], [class*=close]')?.click()"`
-3. **WP-CLI option bypass** — Set the plugin's "setup complete" flag directly: `screenshots/wp option update <plugin_slug>_setup_complete 1` (check the plugin's options table for the exact key)
+3. **WP-CLI option bypass** — Set the plugin's "setup complete" flag directly: `./wp-cli-local option update <plugin_slug>_setup_complete 1` (check the plugin's options table for the exact key)
 4. **Capture as UX observation** — If none of the above work, capture the gate screen itself. A first-run screen that blocks access is a legitimate UX finding.
 
 ### Wizard Progression
@@ -308,7 +313,7 @@ Some plugins gate their entire UI behind a welcome/setup screen that won't dismi
 Wizards that validate fields before advancing (e.g., requiring SMTP credentials):
 
 1. **Fill dummy values** — Use plausible-looking test data (e.g., `smtp.example.com`, port `587`, `test@example.com`). The goal is to reach subsequent screens, not to configure a working connection.
-2. **WP-CLI option bypass** — Set the wizard's step/completion option directly to jump past validation: `screenshots/wp option update <plugin_slug>_wizard_step 99`
+2. **WP-CLI option bypass** — Set the wizard's step/completion option directly to jump past validation: `./wp-cli-local option update <plugin_slug>_wizard_step 99`
 3. **Capture the validation state** — If the wizard won't advance, capture the error/validation state as a UX observation.
 
 ## Step 7: Capture Screenshots

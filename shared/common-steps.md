@@ -4,69 +4,77 @@ Shared instructions referenced by both wp-plugin-research and website-research s
 
 ## Permissions (Step 0)
 
-This skill is **extremely command-heavy** — dozens of sequential bash commands for browser automation, screenshots, local server, and file operations.
+This skill is **extremely command-heavy** — dozens of sequential bash commands for browser automation, screenshots, local server, and file operations. Before asking the user anything, check whether the required permissions are already configured.
 
-**You MUST use AskUserQuestion here and WAIT for the user's response. Do NOT proceed, do NOT run any Bash commands, do NOT explore the codebase, do NOT skip this step. No matter what mode you think you're in, always ask.**
+### Step 0a: Check existing permissions
 
-Ask with these options:
+Read all three settings files (skip any that don't exist):
+1. Project local: `.claude/settings.local.json`
+2. Project shared: `.claude/settings.json`
+3. Global: `~/.claude/settings.json`
 
-> **Heads up:** This review involves 40-50+ bash commands (browser automation, screenshots, local servers). Each one needs manual approval unless permissions are configured.
+Collect every entry from the `permissions.allow` arrays across all three files. Claude Code merges allow rules from all levels, so a permission in any file counts.
+
+Compare against the required permissions list below. Build a list of **missing** entries — any required permission not found in any of the three files.
+
+**Required permissions (core — both skills):**
+```
+Bash(agent-browser:*)
+Bash(agent-browser set viewport:*)
+Bash(python3 -m http.server:*)
+Bash(curl:*)
+Bash(mkdir:*)
+Bash(kill:*)
+Bash(open http:*)
+Bash(cat > screenshots:*)
+Bash(which:*)
+Bash(sleep:*)
+Bash(rm:*)
+Bash(lsof -i:*)
+```
+
+**Additional required permissions (wp-plugin-research only):**
+```
+Bash(chmod +x:*)
+Bash(./wp-cli-local:*)
+Bash(wp:*)
+```
+
+**Format matching:** When checking existing permissions, treat both the colon syntax (`Bash(cmd:*)`) and space syntax (`Bash(cmd *)`) as equivalent. Either format counts as having the permission.
+
+### Step 0b: Decide what to do
+
+**If ALL required permissions are present** → tell the user "Permissions already configured — proceeding." and move to the next step. No question needed.
+
+**If ANY required permissions are missing** → use AskUserQuestion and WAIT for the user's response:
+
+> **Heads up:** This review involves 40-50+ bash commands. Most permissions are configured, but these are missing:
+>
+> _(list the missing permissions)_
 >
 > How would you like to proceed?
 
-1. **Add permissions to settings (Recommended)** — I'll add the required tool permissions to this project's `.claude/settings.local.json`, then you restart Claude Code and re-invoke the skill
+1. **Add missing permissions (Recommended)** — I'll add them to this project's `.claude/settings.local.json`, then you restart Claude Code and re-invoke the skill
 2. **Use bypass mode** — exit, restart with `claude --dangerously-skip-permissions`, then re-invoke the skill
-3. **I've already set up permissions or bypass mode** — proceed immediately
-4. **Continue with manual approvals** — I'll approve each command individually (slow but works)
+3. **Continue with manual approvals** — I'll approve each missing command individually (slow but works)
 
-**After the user responds:**
+**Do NOT move to the next step until the user has explicitly chosen an option (or permissions were already complete).**
 
-- **Option 1:** Read the project's `.claude/settings.local.json` (create if it doesn't exist). Merge the following permissions into the `permissions.allow` array, preserving any existing entries and all other settings.
+### Step 0c: Handle the user's choice
+
+- **Option 1:** Read the project's `.claude/settings.local.json` (create if it doesn't exist). Merge **only the missing permissions** into the `permissions.allow` array, preserving any existing entries and all other settings. After writing, tell the user: "Permissions added. Please restart Claude Code (`/exit` then relaunch) and re-invoke the skill." **Stop here — do nothing else.**
+- **Option 2:** Tell them to run `claude --dangerously-skip-permissions` and re-invoke the skill. **Stop here — do nothing else.**
+- **Option 3:** Proceed, but warn it will be slow.
 
 ### Permission pattern syntax
 
-Use `Bash(command *)` with a **space** before the wildcard. The colon syntax (`Bash(command:*)`) is deprecated per Claude Code docs:
+Use `Bash(command:*)` with a **colon** before the wildcard. This is the format Claude Code's own "don't ask again" feature generates. The docs call it "legacy" but it's what the matching engine actually uses.
 
-> The legacy `:*` suffix syntax is equivalent to ` *` but is deprecated.
-
-Shell operator awareness (also from the docs):
+Shell operator awareness (from the docs):
 
 > Claude Code is aware of shell operators (like `&&`) so a prefix match rule like `Bash(safe-cmd *)` won't give it permission to run the command `safe-cmd && other-cmd`.
 
-This means commands with `&&`, `||`, `|`, `&`, or `$VARIABLE` will NOT match any wildcard permission rule. The skill already avoids these (see "No Shell Variables" section below), but a few edge cases remain — documented in the "Commands that will still prompt" table.
-
-### Core permissions (both skills)
-
-```json
-{
-  "permissions": {
-    "allow": [
-      "Bash(agent-browser *)",
-      "Bash(agent-browser set viewport *)",
-      "Bash(python3 -m http.server *)",
-      "Bash(curl *)",
-      "Bash(mkdir *)",
-      "Bash(kill *)",
-      "Bash(open http*)",
-      "Bash(cat > screenshots*)",
-      "Bash(which *)",
-      "Bash(sleep *)",
-      "Bash(rm *)",
-      "Bash(lsof -i *)"
-    ]
-  }
-}
-```
-
-### Additional permissions for wp-plugin-research
-
-Also merge these when the user is running the wp-plugin-research skill:
-
-```json
-"Bash(chmod +x *)",
-"Bash(screenshots/wp *)",
-"Bash(wp *)"
-```
+This means commands with `&&`, `||`, `|`, `&`, or `$VARIABLE` will NOT match any wildcard permission rule. The skill already avoids these (see "No Shell Variables" section below), but a few edge cases remain — documented in the table below.
 
 ### Commands that will still prompt (unavoidable)
 
@@ -77,16 +85,6 @@ These use shell operators and cannot be pre-approved — Claude Code blocks them
 | `python3 -m http.server 3000 &` | `&` is a shell operator | Use `run_in_background: true` on the Bash tool call instead of trailing `&` |
 | `agent-browser snapshot -i 2>&1 \| grep "keyword"` | `\|` pipe operator | Run `agent-browser snapshot -i` alone and search the output directly |
 | `cat > file <<'HEREDOC' ... HEREDOC` | Heredoc syntax | May still prompt — user approves once per session |
-
-These local project permissions merge with whatever the user has in their global `~/.claude/settings.json`. Deny rules at any level override allow rules.
-
-After writing, tell the user: "Permissions added. Please restart Claude Code (`/exit` then relaunch) and re-invoke the skill." **Stop here — do nothing else.**
-
-- **Option 2:** Tell them to run `claude --dangerously-skip-permissions` and re-invoke the skill. **Stop here — do nothing else.**
-- **Option 3:** Proceed to next step.
-- **Option 4:** Proceed, but warn it will be slow (40-50+ individual approvals).
-
-**Do NOT move to the next step until the user has explicitly chosen an option.**
 
 ## No Shell Variables in Bash Commands
 
@@ -105,6 +103,18 @@ agent-browser --session ws-abc123 open "https://example.com"
 The examples in these skills use placeholders like `<session>` and `<url>` for readability — always substitute actual values when running commands.
 
 Also avoid chaining commands with `||` and `&&` — these trigger "shell operators" approval. Use separate sequential Bash calls instead.
+
+**Paths with spaces:** Always use **double quotes** around paths, never backslash escaping. Claude Code shows a "Contains backslash-escaped whitespace" warning for backslash-escaped spaces, requiring extra approval.
+
+```bash
+# WRONG — triggers "backslash-escaped whitespace" warning:
+agent-browser --session ws-abc123 screenshot /Users/shub/Local\ Sites/reviewer-test/screenshots/01-dashboard.png
+
+# CORRECT — no warning:
+agent-browser --session ws-abc123 screenshot "/Users/shub/Local Sites/reviewer-test/screenshots/01-dashboard.png"
+```
+
+This commonly affects Local by Flywheel sites (`Local Sites` directory) and any path with spaces.
 
 ## Figma MCP Setup
 
