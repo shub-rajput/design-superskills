@@ -8,10 +8,11 @@ Tell Claude Code what you want to review — a WordPress plugin's admin UI, a co
 
 The plugin launches a headless browser, navigates through pages you care about, and captures screenshots. Then it dispatches review agents that analyze each screenshot through lenses you choose (UX quality, first-time experience, monetization, marketing effectiveness, conversion flow, and more). Everything comes together in an annotated HTML gallery — screenshots grouped by section, with issue callouts, opportunity scores, and comparison tables when you're reviewing multiple subjects. If you use Figma, the gallery imports directly.
 
-Two skills power this:
+Three skills power this:
 
 - **wp-plugin-research** — Screenshot and UX-review WordPress plugin admin UIs (local or remote)
 - **website-research** — Screenshot and marketing-review any public website
+- **figma-organize** — Organize scattered Figma screens into labeled layouts with optional dev notes
 
 ---
 
@@ -82,7 +83,8 @@ Claude should automatically invoke the **website-research** skill.
 design-superskills/
 ├── skills/
 │   ├── wp-plugin-research/    # WP plugin screenshot capture + UX review
-│   └── website-research/      # Public website screenshot capture + marketing review
+│   ├── website-research/      # Public website screenshot capture + marketing review
+│   └── figma-organize/        # Figma screen organization + labeling + dev notes
 ├── agents/
 │   ├── ux-reviewer.md         # UX analysis of WP plugin admin screenshots
 │   ├── ux-comparator.md       # Side-by-side plugin comparison
@@ -117,6 +119,10 @@ Both skills are invoked by describing your intent in natural language. Claude Co
 **Website research:**
 > "Capture and review the marketing page for wpforms.com"
 > "Compare the pricing pages of the top 3 email marketing tools"
+
+**Figma organize:**
+> "Organize this section https://figma.com/design/..."
+> "Clean up and label these screens in Figma"
 
 ## Review Objectives
 
