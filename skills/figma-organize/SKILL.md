@@ -293,9 +293,18 @@ for (const screen of groupScreens) {
 // Arrange screens horizontally within the sub-section (same logic as flat layout)
 // ...
 
-// Match parent section's fill color for sub-section styling
+// Sub-section fill: darken parent fill ~30% for visual contrast
 if (parentSection.fills && parentSection.fills.length > 0) {
-  subSection.fills = [...parentSection.fills];
+  const parentFill = parentSection.fills[0];
+  if (parentFill.type === "SOLID") {
+    subSection.fills = [{ type: "SOLID", color: {
+      r: parentFill.color.r * 0.7,
+      g: parentFill.color.g * 0.7,
+      b: parentFill.color.b * 0.7
+    }}];
+  } else {
+    subSection.fills = [...parentSection.fills];
+  }
 }
 
 parentSection.appendChild(subSection);
@@ -325,6 +334,8 @@ for (const subSection of subSections) {
   currentX += subSection.width + sectionGap;
 }
 ```
+
+**Gotcha: sub-section children after creation.** After creating sub-sections and moving children into them, reading `subSection.children` via the parent node may return empty arrays. To access sub-section children reliably, navigate via a known child ID: `figma.getNodeById(childId).parent` gives you the sub-section with populated children.
 
 ## Step 5: Validate Arrangement
 
@@ -400,14 +411,33 @@ for (let i = 0; i < screens.length; i++) {
 
   if (bestLabel && bestDist < 2000) {
     // REUSE existing label — update text and reposition
-    if (bestLabel.characters !== newText) {
-      await figma.loadFontAsync(bestLabel.fontName);
-      bestLabel.characters = newText;
+    const fontName = bestLabel.fontName;
+
+    // fontName returns a Symbol if the text has mixed fonts — can't reuse
+    if (typeof fontName === "symbol" || fontName === figma.mixed) {
+      // Mixed fonts — delete and create fresh
+      bestLabel.remove();
+      const label = figma.createText();
+      label.fontName = { family: "Inter", style: "Medium" };
+      label.fontSize = 70;
+      label.characters = newText;
+      label.fills = [{ type: "SOLID", color: { r: 1, g: 1, b: 1 } }];
+      container.appendChild(label);
+      label.x = screen.x;
+      label.y = screen.y - 70 - label.height;
+      mutatedIds.push(label.id);
+      usedLabels.add(bestLabel.id);
+    } else {
+      // Load the EXACT font the existing label uses, not Inter
+      await figma.loadFontAsync(fontName);
+      if (bestLabel.characters !== newText) {
+        bestLabel.characters = newText;
+      }
+      bestLabel.x = screen.x;
+      bestLabel.y = screen.y - 70 - bestLabel.height;
+      usedLabels.add(bestLabel.id);
+      mutatedIds.push(bestLabel.id);
     }
-    bestLabel.x = screen.x;
-    bestLabel.y = screen.y - 70 - bestLabel.height;
-    usedLabels.add(bestLabel.id);
-    mutatedIds.push(bestLabel.id);
   } else {
     // CREATE new label only for screens with no matching existing label
     const label = figma.createText();
