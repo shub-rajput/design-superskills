@@ -142,6 +142,27 @@ return {
 | **Note (default)** | `type === "FRAME"` AND `name === "Dev Note"` AND `width <= 450` |
 | **Screen** | Everything else that's visible |
 
+## Step 2b: Save Version History
+
+**Before making any changes**, create a Figma version snapshot so the user can revert if needed. Figma has no undo for MCP changes — this is the safety net.
+
+```javascript
+for (const page of figma.root.children) {
+  await figma.setCurrentPageAsync(page);
+  if (figma.getNodeById("<childId>")) break;
+}
+
+await figma.saveVersionHistoryAsync(
+  "Before Figma Organize",
+  "Auto-saved before running figma-organize skill"
+);
+
+return { versionSaved: true };
+```
+
+Inform the user:
+> Saved a version snapshot ("Before Figma Organize") — you can revert from Figma's version history if anything goes wrong.
+
 ## Step 3: Handle Existing Labels
 
 **Never delete labels without asking.** If existing labels were found in Step 2, present them to the user:
