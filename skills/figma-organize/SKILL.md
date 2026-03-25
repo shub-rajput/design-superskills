@@ -73,18 +73,23 @@ Skip questions the user already answered inline.
 
 Find the correct page and read the target node's children. **Critical:** the section/frame won't be found on the default page — you must iterate all pages.
 
+**Page discovery approach:** Use a single `use_figma` call that iterates all pages, trying to find the section AND access its children. When the section is found on the correct page, its children will be populated.
+
 ```javascript
-// Find the correct page by searching for a known child node
-// First, get_metadata on the nodeId to find child IDs
-// Then search for a child across pages:
+// Iterate all pages to find the one where this section has children
 for (const page of figma.root.children) {
   await figma.setCurrentPageAsync(page);
-  const target = figma.getNodeById("<childId>");
-  if (target) break;
+  const section = figma.getNodeById("<nodeId>");
+  if (section && section.children && section.children.length > 0) {
+    // Found the right page — children are loaded
+    break;
+  }
 }
 ```
 
-**Why search for a child, not the section itself:** Section nodes may return `children.length === 0` when accessed from the wrong page. Finding a child node first guarantees the page content is loaded.
+**Why iterate pages:** Section nodes return `children.length === 0` when accessed from the wrong page. You must switch to the correct page to load content.
+
+**Avoid get_metadata for large sections** — it can return 300K+ characters exceeding token limits. Use `use_figma` directly for child classification instead.
 
 Once on the correct page, classify children:
 
@@ -142,30 +147,21 @@ return {
 | **Note (default)** | `type === "FRAME"` AND `name === "Dev Note"` AND `width <= 450` |
 | **Screen** | Everything else that's visible |
 
-## Step 2b: Save Version History
+## Step 2b: Version Safety
 
-**Before making any changes**, create a Figma version snapshot so the user can revert if needed. Figma has no undo for MCP changes — this is the safety net.
+**Before making any changes**, ask the user to save a version manually:
 
-```javascript
-for (const page of figma.root.children) {
-  await figma.setCurrentPageAsync(page);
-  if (figma.getNodeById("<childId>")) break;
-}
+> **Before I start making changes** — please save a named version in Figma (File → Save to Version History) so you can revert if needed. Figma has no undo for MCP changes.
+>
+> Let me know when you're ready to proceed.
 
-await figma.saveVersionHistoryAsync(
-  "Before Figma Organize",
-  "Auto-saved before running figma-organize skill"
-);
+Wait for confirmation before continuing to Step 3.
 
-return { versionSaved: true };
-```
+## Step 3: Handle Existing Labels and Notes
 
-Inform the user:
-> Saved a version snapshot ("Before Figma Organize") — you can revert from Figma's version history if anything goes wrong.
+**Never delete without asking.** The approach is non-destructive: edit in place, only create/delete as needed.
 
-## Step 3: Handle Existing Labels
-
-**Never delete labels without asking.** If existing labels were found in Step 2, present them to the user:
+If existing labels were found in Step 2, present them:
 
 > **Found X existing labels:**
 > - "Submissions > List View"
@@ -173,37 +169,19 @@ Inform the user:
 > - ...
 >
 > What should I do with them?
-> - A) **Keep & reposition** (default) — move them to correct positions above their screens
-> - B) **Update** — replace with auto-detected or new labels
-> - C) **Remove** — strip all existing labels
+> - A) **Keep & reposition** (default) — move them above their screens, update text if needed
+> - B) **Replace** — generate new labels (auto-detect or from element names)
+> - C) **Remove** — strip all labels
 
-If user chooses **A (keep):** skip label deletion, reposition in Step 6.
-If user chooses **B (update):** delete existing labels, create new ones in Step 6.
-If user chooses **C (remove):** delete existing labels, skip Step 6.
+**For option A (keep):** In Step 6, match each label to its nearest screen by x-proximity, reposition it, and update `.characters` if the screen name changed. Only create new labels for screens without a matching label. Only delete labels with no matching screen.
 
-For existing notes, apply the same approach — ask if there are existing notes.
+**For option B (replace):** In Step 6, reuse existing text nodes where possible — update `.characters` and reposition rather than delete-and-recreate. Create new text nodes only for screens that don't have a reusable label. Delete extras.
+
+**For option C (remove):** Delete all text labels.
+
+Apply the same approach for existing notes.
 
 **If no existing labels/notes found:** skip this step entirely.
-
-```javascript
-// Only if user chose B or C — delete labels
-for (const page of figma.root.children) {
-  await figma.setCurrentPageAsync(page);
-  if (figma.getNodeById("<childId>")) break;
-}
-
-const container = figma.getNodeById("<nodeId>");
-const toDelete = [];
-
-for (const child of container.children) {
-  if (child.type === "TEXT") toDelete.push(child);
-  // Add notes if user also chose to remove them
-}
-
-for (const node of toDelete) node.remove();
-
-return { deleted: toDelete.length };
-```
 
 ## Step 4: Arrange Screens
 
@@ -429,22 +407,49 @@ return { labelsCreated: createdIds.length, createdNodeIds: createdIds };
 - For modals/dialogs, name the modal (e.g., "Calendar Invitation Email")
 - For settings panels, name the setting category (e.g., "Limits & Buffers")
 
-### Repositioning existing labels
+### Editing existing labels in place (keep & reposition)
 
-If user chose "keep & reposition" in Step 3, match each existing label to its nearest screen by x-position and move it above:
+Match each existing label to its nearest screen by x-proximity, reposition, and update text:
 
 ```javascript
-// For each existing label, find the closest screen and reposition
-for (const label of existingLabels) {
-  const labelNode = figma.getNodeById(label.id);
-  // Find closest screen by x-position
-  const closestScreen = screens.reduce((closest, s) =>
-    Math.abs(s.x - label.x) < Math.abs(closest.x - label.x) ? s : closest
-  );
-  labelNode.x = closestScreen.x;
-  labelNode.y = closestScreen.y - 70 - labelNode.height;
+// Sort screens by x-position
+const sortedScreens = [...screens].sort((a, b) => a.x - b.x);
+const usedLabels = new Set();
+const usedScreens = new Set();
+
+// Match labels to screens by x-proximity
+for (const screen of sortedScreens) {
+  let bestLabel = null;
+  let bestDist = Infinity;
+  for (const label of existingLabels) {
+    if (usedLabels.has(label.id)) continue;
+    const dist = Math.abs(label.x - screen.x);
+    if (dist < bestDist) { bestDist = dist; bestLabel = label; }
+  }
+  if (bestLabel) {
+    const labelNode = figma.getNodeById(bestLabel.id);
+    labelNode.x = screen.x;
+    labelNode.y = screen.y - 70 - labelNode.height;
+    // Update text if screen name changed
+    if (labelNode.characters !== screen.name) {
+      await figma.loadFontAsync(labelNode.fontName);
+      labelNode.characters = screen.name;
+    }
+    usedLabels.add(bestLabel.id);
+    usedScreens.add(screen.id);
+  }
 }
+
+// Create new labels for unmatched screens
+// Delete labels with no matching screen
 ```
+
+### Handling duplicate screen names
+
+When multiple screens share the same name (e.g., three frames all named "Submissions"):
+- **If using element names (Mode A):** labels will be identical. This is fine — position makes them distinguishable.
+- **If auto-detecting (Mode B):** screenshot each screen to generate unique descriptive labels. This is the recommended approach when names collide.
+- **Tip:** If you detect 3+ screens with the same name, suggest auto-detect mode to the user even if they chose Mode A.
 
 ## Step 7: Validate Labels
 
