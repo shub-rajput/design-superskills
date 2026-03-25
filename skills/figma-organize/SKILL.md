@@ -159,27 +159,20 @@ Wait for confirmation before continuing to Step 3.
 
 ## Step 3: Handle Existing Labels and Notes
 
-**Never delete without asking.** The approach is non-destructive: edit in place, only create/delete as needed.
+**Do NOT delete existing labels.** Always reuse them. This preserves node IDs, custom styling, and user edits.
 
-If existing labels were found in Step 2, present them:
+If existing labels were found in Step 2, inform the user:
 
-> **Found X existing labels:**
-> - "Submissions > List View"
-> - "Onboarding > Step 1"
-> - ...
->
-> What should I do with them?
-> - A) **Keep & reposition** (default) — move them above their screens, update text if needed
-> - B) **Replace** — generate new labels (auto-detect or from element names)
-> - C) **Remove** — strip all labels
+> **Found X existing labels.** I'll reposition them above their screens and update the text if needed.
 
-**For option A (keep):** In Step 6, match each label to its nearest screen by x-proximity, reposition it, and update `.characters` if the screen name changed. Only create new labels for screens without a matching label. Only delete labels with no matching screen.
+Then in Step 6:
+1. Match each existing label to its nearest screen by x-proximity
+2. Reposition it above the matched screen
+3. Update `.characters` only if the label text doesn't match the screen name (and user chose Mode A) or with auto-detected text (Mode B)
+4. Create new labels only for screens that have no matching existing label
+5. If there are leftover labels with no matching screen, ask the user before removing them
 
-**For option B (replace):** In Step 6, reuse existing text nodes where possible — update `.characters` and reposition rather than delete-and-recreate. Create new text nodes only for screens that don't have a reusable label. Delete extras.
-
-**For option C (remove):** Delete all text labels.
-
-Apply the same approach for existing notes.
+**For existing notes:** same approach — reposition, don't delete.
 
 **If no existing labels/notes found:** skip this step entirely.
 
@@ -345,80 +338,58 @@ Fix any issues before proceeding.
 
 ## Step 6: Add/Reposition Labels
 
-Depends on Step 3 choice:
-- **Keep & reposition:** Move existing label text nodes to correct positions above their associated screens
-- **Update / Fresh:** Create new labels
+**First, determine the label text for each screen** based on the user's label mode choice:
 
-### Creating labels
+- **Mode A (element names):** label text = `screen.name`
+- **Mode B (auto-detect):** call `get_screenshot` on each screen element (outside `use_figma`), analyze the content, generate a short descriptive label. Build a map: `[{ screenId, labelText }, ...]`
 
-Two modes depending on user choice:
+**Auto-detect label guidelines:**
+- Keep labels short (2-5 words)
+- Use `>` as a hierarchy separator for sub-views (e.g., "Share > Link")
+- Focus on the primary content, not UI chrome
+- For modals: name the modal (e.g., "Calendar Invitation Email")
+- For settings: name the category (e.g., "Limits & Buffers")
 
-**Mode A: Use element names (default)**
+**Then, apply labels non-destructively.** If existing labels were found in Step 2, reuse them. Only create new text nodes for screens that don't have a matching label.
 
 ```javascript
 // Switch page first
 for (const page of figma.root.children) {
   await figma.setCurrentPageAsync(page);
-  if (figma.getNodeById("<childId>")) break;
+  const section = figma.getNodeById("<nodeId>");
+  if (section && section.children && section.children.length > 0) break;
 }
 
 await figma.loadFontAsync({ family: "Inter", style: "Medium" });
 
 const container = figma.getNodeById("<nodeId>");
 
-// Re-collect screens (same filter as Step 4)
-const screens = container.children
-  .filter(c => { /* same screen filter — exclude TEXT nodes and notes */ })
-  .sort((a, b) => a.x - b.x || a.y - b.y);
-
-const createdIds = [];
-
-for (const screen of screens) {
-  const label = figma.createText();
-  label.fontName = { family: "Inter", style: "Medium" };
-  label.fontSize = 70;
-  label.characters = screen.name;
-  label.fills = [{ type: "SOLID", color: { r: 1, g: 1, b: 1 } }];
-
-  container.appendChild(label);
-  label.x = screen.x;
-  label.y = screen.y - 70 - label.height; // 70px gap
-
-  createdIds.push(label.id);
+// Collect screens and existing labels
+const screens = [];
+const existingLabels = [];
+for (const child of container.children) {
+  if (child.visible === false) continue;
+  if (child.type === "TEXT") {
+    existingLabels.push(child);
+  } else if (!(child.type === "INSTANCE" && child.width <= 450) &&
+             !(child.type === "FRAME" && child.name === "Dev Note" && child.width <= 450)) {
+    screens.push(child);
+  }
 }
+screens.sort((a, b) => a.x - b.x || a.y - b.y);
 
-return { labelsCreated: createdIds.length, createdNodeIds: createdIds };
-```
+// labelTexts is an array of strings, one per screen (from Mode A or B)
+const labelTexts = screens.map(s => /* screen.name or auto-detected text */);
 
-**Font fallback:** If Inter loading fails, try "Roboto" then "Arial". Inform the user which font was used.
-
-**Mode B: Auto-detect from content**
-
-1. Call `get_screenshot` on each individual screen element (by node ID) — this happens outside `use_figma`, using the MCP screenshot tool directly
-2. Analyze the screenshot content — identify what the screen shows
-3. Generate a short, descriptive label (e.g., "Event Types Overview", "Booking Preview", "Share > Link")
-4. Build a label map: `[{ id, label }, ...]`
-5. Use the same `use_figma` code as Mode A (including the page-switch preamble and `loadFontAsync` call), but substitute the auto-generated labels instead of `screen.name`
-
-**Guidelines for auto-generated labels:**
-- Keep labels short (2-5 words)
-- Use `>` as a hierarchy separator when the screen shows a sub-view (e.g., "Share > Link")
-- Focus on the primary content/feature shown, not the UI chrome
-- For modals/dialogs, name the modal (e.g., "Calendar Invitation Email")
-- For settings panels, name the setting category (e.g., "Limits & Buffers")
-
-### Editing existing labels in place (keep & reposition)
-
-Match each existing label to its nearest screen by x-proximity, reposition, and update text:
-
-```javascript
-// Sort screens by x-position
-const sortedScreens = [...screens].sort((a, b) => a.x - b.x);
+// Match existing labels to screens by x-proximity, then reuse them
 const usedLabels = new Set();
-const usedScreens = new Set();
+const mutatedIds = [];
 
-// Match labels to screens by x-proximity
-for (const screen of sortedScreens) {
+for (let i = 0; i < screens.length; i++) {
+  const screen = screens[i];
+  const newText = labelTexts[i];
+
+  // Find the closest unused existing label
   let bestLabel = null;
   let bestDist = Infinity;
   for (const label of existingLabels) {
@@ -426,29 +397,45 @@ for (const screen of sortedScreens) {
     const dist = Math.abs(label.x - screen.x);
     if (dist < bestDist) { bestDist = dist; bestLabel = label; }
   }
-  if (bestLabel) {
-    const labelNode = figma.getNodeById(bestLabel.id);
-    labelNode.x = screen.x;
-    labelNode.y = screen.y - 70 - labelNode.height;
-    // Update text if screen name changed
-    if (labelNode.characters !== screen.name) {
-      await figma.loadFontAsync(labelNode.fontName);
-      labelNode.characters = screen.name;
+
+  if (bestLabel && bestDist < 2000) {
+    // REUSE existing label — update text and reposition
+    if (bestLabel.characters !== newText) {
+      await figma.loadFontAsync(bestLabel.fontName);
+      bestLabel.characters = newText;
     }
+    bestLabel.x = screen.x;
+    bestLabel.y = screen.y - 70 - bestLabel.height;
     usedLabels.add(bestLabel.id);
-    usedScreens.add(screen.id);
+    mutatedIds.push(bestLabel.id);
+  } else {
+    // CREATE new label only for screens with no matching existing label
+    const label = figma.createText();
+    label.fontName = { family: "Inter", style: "Medium" };
+    label.fontSize = 70;
+    label.characters = newText;
+    label.fills = [{ type: "SOLID", color: { r: 1, g: 1, b: 1 } }];
+    container.appendChild(label);
+    label.x = screen.x;
+    label.y = screen.y - 70 - label.height;
+    mutatedIds.push(label.id);
   }
 }
 
-// Create new labels for unmatched screens
-// Delete labels with no matching screen
+// Leftover labels with no matching screen — ask user before removing
+const orphanedLabels = existingLabels.filter(l => !usedLabels.has(l.id));
+
+return {
+  reused: usedLabels.size,
+  created: mutatedIds.length - usedLabels.size,
+  orphaned: orphanedLabels.map(l => ({ id: l.id, text: l.characters })),
+  mutatedNodeIds: mutatedIds
+};
 ```
 
-### Handling duplicate screen names
+**Font fallback:** If Inter loading fails, try "Roboto" then "Arial". Inform the user which font was used.
 
-When multiple screens share the same name (e.g., three frames all named "Submissions"):
-- **Mode A (element names):** If duplicates are detected, automatically screenshot only the duplicate screens and generate unique descriptive labels for those. Non-duplicate screens keep their element names. No need to ask the user — just enrich silently.
-- **Mode B (auto-detect):** All screens are screenshotted anyway, so duplicates are handled naturally.
+**Key rule: NEVER delete existing labels without explicit user consent.** The code above reuses existing text nodes by updating `.characters` and repositioning. New text nodes are only created for screens that don't have a nearby existing label. Orphaned labels (no matching screen) are reported back — ask the user what to do with them.
 
 ## Step 7: Validate Labels
 
