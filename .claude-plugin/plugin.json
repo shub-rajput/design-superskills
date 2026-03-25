@@ -1,12 +1,12 @@
 {
   "name": "design-superskills",
-  "description": "Design research skills: capture screenshots of WP plugins and websites, generate annotated galleries, import to Figma",
-  "version": "1.0.5",
+  "description": "Design research and organization skills: capture screenshots, generate annotated galleries, organize Figma screens, import to Figma",
+  "version": "1.1.0",
   "author": {
     "name": "Shubhang Rajput"
   },
   "homepage": "https://github.com/shub-rajput/design-superskills",
   "repository": "https://github.com/shub-rajput/design-superskills",
   "license": "MIT",
-  "keywords": ["design", "ux", "screenshots", "wordpress", "figma", "research", "marketing"]
+  "keywords": ["design", "ux", "screenshots", "wordpress", "figma", "research", "marketing", "organize"]
 }
