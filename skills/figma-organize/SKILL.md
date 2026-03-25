@@ -1,11 +1,11 @@
 ---
 name: figma-organize
-description: Use when organizing Figma design screens into labeled, spaced layouts with optional dev notes. Triggers include requests to organize screens, arrange frames, clean up a section, add labels, or re-format a layout.
+description: Use when organizing Figma design screens into labeled, spaced layouts with optional dev notes and sub-sections. Triggers include requests to organize screens, arrange frames, clean up a section, add labels, group screens, or re-format a layout.
 ---
 
 # Figma Organize
 
-Organize scattered design screens inside a Figma section or frame into a clean, labeled horizontal layout with optional dev notes. Works on any node type — frames, groups, images, shapes, vectors. Handles both fresh organization and re-formatting existing layouts.
+Organize scattered design screens inside a Figma section or frame into a clean, labeled layout with optional dev notes and sub-section grouping. Works on any node type — frames, groups, images, shapes, vectors. Handles both fresh organization and re-formatting existing layouts.
 
 > **Validation principle:** Every `use_figma` write step must be followed by a `get_screenshot` check. Do not stack writes without visual verification. If a screenshot reveals a problem, fix it before proceeding.
 
@@ -14,17 +14,17 @@ Organize scattered design screens inside a Figma section or frame into a clean, 
 | Step | What |
 |------|------|
 | **0** | Prerequisites — Figma MCP required |
-| **1** | Ask about labels and dev notes (only question) |
+| **1** | Parse user intent, ask only unresolved questions |
 | **2** | Read container, classify children (screens vs labels vs notes) |
-| **3** | Clean up old labels and notes |
-| **4** | Arrange screens — horizontal row, consistent spacing |
+| **3** | Handle existing labels (ask: keep/update/remove) |
+| **4** | Arrange screens + optional sub-section grouping |
 | **5** | Validate arrangement (get_screenshot) |
-| **6** | Add labels — 70pt Inter Medium |
+| **6** | Add/reposition labels |
 | **7** | Validate labels (get_screenshot) |
 | **8** | Add dev notes (if requested) |
-| **9** | Resize section to fit content |
+| **9** | Resize section(s) to fit content |
 | **10** | Final validation (get_screenshot) |
-| **11** | Present result, offer spacing adjustments |
+| **11** | Present result, offer adjustments |
 
 ## Step 0: Prerequisites
 
@@ -46,21 +46,28 @@ Do NOT proceed without it.
    - `layoutSizingHorizontal/Vertical = "FILL"` must be set AFTER `appendChild`
    - Always `return` all created/mutated node IDs
 
-## Step 1: Ask About Labels and Dev Notes
+## Step 1: Parse User Intent
 
 The user has already provided a Figma link to a section or frame. Extract `fileKey` and `nodeId` from the URL (convert `-` to `:` in nodeId).
 
-Use AskUserQuestion — one combined question:
+**Parse inline preferences first.** Check if the user's message already answers any of these:
+- Labels preference (e.g., "no labels", "auto-label", "label these screens")
+- Dev notes preference (e.g., "no dev notes", "add Developer Note component")
+- Grouping preference (e.g., "group by feature", "keep flat")
+
+**Only ask about unresolved choices.** If the user said "organize this, no dev notes" — don't ask about dev notes. Combine remaining questions into one `AskUserQuestion`:
 
 > **Labels:**
 > - A) Use element names (default, fast)
-> - B) Auto-detect from content (I'll screenshot each element and generate descriptive labels — great for screenshot dumps with meaningless filenames like "CleanShot 2025-03-05...")
+> - B) Auto-detect from content (I'll screenshot each element and generate descriptive labels — great for screenshot dumps with meaningless filenames)
 > - C) No labels
 >
 > **Dev notes:**
 > - A) Yes — what's the component name? (e.g., "Developer Note")
 > - B) Yes — use a default note template
 > - C) No
+
+Skip questions the user already answered inline.
 
 ## Step 2: Read Container and Classify Children
 
@@ -84,20 +91,28 @@ Once on the correct page, classify children:
 ```javascript
 const container = figma.getNodeById("<nodeId>");
 const screens = [];
-const oldLabels = [];
-const oldNotes = [];
+const existingLabels = [];
+const existingNotes = [];
 
 for (const child of container.children) {
   if (child.visible === false) continue;
 
-  // Existing label: text node at 70pt
-  if (child.type === "TEXT" && child.fontSize === 70) {
-    oldLabels.push(child);
+  // Existing label: ANY text node that is a direct child of the container.
+  // Do NOT rely on fontSize === 70 — it may return a Symbol for mixed styles
+  // or the label may have been created at a different size.
+  if (child.type === "TEXT") {
+    existingLabels.push({
+      id: child.id,
+      name: child.name,
+      characters: child.characters,
+      x: child.x, y: child.y,
+      width: child.width, height: child.height
+    });
   }
   // Existing note: instance ≤450px wide, or frame named "Dev Note" ≤450px wide
   else if ((child.type === "INSTANCE" && child.width <= 450) ||
            (child.type === "FRAME" && child.name === "Dev Note" && child.width <= 450)) {
-    oldNotes.push(child);
+    existingNotes.push({ id: child.id, name: child.name, x: child.x, y: child.y });
   }
   // Everything else is a screen
   else {
@@ -111,8 +126,8 @@ for (const child of container.children) {
 
 return {
   screens: screens.sort((a, b) => a.x - b.x || a.y - b.y),
-  oldLabels: oldLabels.length,
-  oldNotes: oldNotes.length
+  existingLabels,
+  existingNotes: existingNotes.length
 };
 ```
 
@@ -122,17 +137,35 @@ return {
 
 | Type | Detection |
 |------|-----------|
-| **Label** | `type === "TEXT"` AND `fontSize === 70` |
+| **Label** | `type === "TEXT"` (any direct-child text node is a label) |
 | **Note (instance)** | `type === "INSTANCE"` AND `width <= 450` |
 | **Note (default)** | `type === "FRAME"` AND `name === "Dev Note"` AND `width <= 450` |
 | **Screen** | Everything else that's visible |
 
-## Step 3: Clean Up Old Labels and Notes
+## Step 3: Handle Existing Labels
 
-If existing labels or notes were found, delete them. They'll be recreated fresh with correct spacing.
+**Never delete labels without asking.** If existing labels were found in Step 2, present them to the user:
+
+> **Found X existing labels:**
+> - "Submissions > List View"
+> - "Onboarding > Step 1"
+> - ...
+>
+> What should I do with them?
+> - A) **Keep & reposition** (default) — move them to correct positions above their screens
+> - B) **Update** — replace with auto-detected or new labels
+> - C) **Remove** — strip all existing labels
+
+If user chooses **A (keep):** skip label deletion, reposition in Step 6.
+If user chooses **B (update):** delete existing labels, create new ones in Step 6.
+If user chooses **C (remove):** delete existing labels, skip Step 6.
+
+For existing notes, apply the same approach — ask if there are existing notes.
+
+**If no existing labels/notes found:** skip this step entirely.
 
 ```javascript
-// Switch page first (find via child node)
+// Only if user chose B or C — delete labels
 for (const page of figma.root.children) {
   await figma.setCurrentPageAsync(page);
   if (figma.getNodeById("<childId>")) break;
@@ -142,9 +175,8 @@ const container = figma.getNodeById("<nodeId>");
 const toDelete = [];
 
 for (const child of container.children) {
-  if (child.type === "TEXT" && child.fontSize === 70) toDelete.push(child);
-  else if (child.type === "INSTANCE" && child.width <= 450) toDelete.push(child);
-  else if (child.type === "FRAME" && child.name === "Dev Note" && child.width <= 450) toDelete.push(child);
+  if (child.type === "TEXT") toDelete.push(child);
+  // Add notes if user also chose to remove them
 }
 
 for (const node of toDelete) node.remove();
@@ -152,11 +184,7 @@ for (const node of toDelete) node.remove();
 return { deleted: toDelete.length };
 ```
 
-If no old labels/notes were found in Step 2, skip this step.
-
 ## Step 4: Arrange Screens
-
-Position all screens in a horizontal row with consistent spacing.
 
 **Layout defaults:**
 
@@ -171,6 +199,10 @@ Position all screens in a horizontal row with consistent spacing.
 | Label color | White `{r:1, g:1, b:1}` |
 | Default note width | 400px |
 
+### Flat layout (default)
+
+Position all screens in a horizontal row:
+
 ```javascript
 // Switch page first
 for (const page of figma.root.children) {
@@ -180,11 +212,11 @@ for (const page of figma.root.children) {
 
 const container = figma.getNodeById("<nodeId>");
 
-// Collect screens (same filter as Step 2 — exclude labels and notes)
+// Collect screens only (exclude text labels and notes)
 const screens = container.children
   .filter(c => {
     if (c.visible === false) return false;
-    if (c.type === "TEXT" && c.fontSize === 70) return false;
+    if (c.type === "TEXT") return false;
     if (c.type === "INSTANCE" && c.width <= 450) return false;
     if (c.type === "FRAME" && c.name === "Dev Note" && c.width <= 450) return false;
     return true;
@@ -202,7 +234,6 @@ tempLabel.remove();
 
 const padding = 100;
 const labelGap = 70;
-// If labels enabled, reserve space above screens
 // labelsEnabled = true if user chose A or B for labels in Step 1
 // notesEnabled = true if user chose A or B for dev notes in Step 1
 const startY = <labelsEnabled> ? padding + labelHeight + labelGap : padding;
@@ -227,20 +258,103 @@ for (const screen of screens) {
 return { arranged: screens.length, mutatedNodeIds: screens.map(s => s.id) };
 ```
 
+### Sub-section grouping (when user requests or 8+ screens)
+
+For larger sets of screens, offer to group them into sub-sections. This can happen:
+- **User asks explicitly** (e.g., "group by feature area")
+- **Auto-suggest for 8+ screens** — analyze labels for common prefixes (text before `>`) and suggest groups
+
+**Grouping flow:**
+
+1. Analyze screen names or auto-detected labels for common prefixes
+2. Present detected groups:
+   > **Suggested groups (from label prefixes):**
+   > - **Submissions** — 4 screens
+   > - **Onboarding** — 3 screens
+   > - **Settings** — 3 screens
+   > - **Dashboard** — 2 screens
+   >
+   > Layout: **Vertical** (sections stacked top to bottom) or **Horizontal** (side by side)?
+3. User confirms or adjusts
+
+**Creating sub-sections:**
+
+```javascript
+// Switch page
+for (const page of figma.root.children) {
+  await figma.setCurrentPageAsync(page);
+  if (figma.getNodeById("<childId>")) break;
+}
+
+const parentSection = figma.getNodeById("<sectionId>");
+
+// Create a child section for each group
+const subSection = figma.createSection();
+subSection.name = "<groupName>";
+
+// Move this group's screens into the sub-section
+for (const screen of groupScreens) {
+  const node = figma.getNodeById(screen.id);
+  subSection.appendChild(node);
+}
+
+// Arrange screens horizontally within the sub-section (same logic as flat layout)
+// ...
+
+// Match parent section's fill color for sub-section styling
+if (parentSection.fills && parentSection.fills.length > 0) {
+  subSection.fills = [...parentSection.fills];
+}
+
+parentSection.appendChild(subSection);
+```
+
+**Positioning sub-sections (vertical stacking — default for 3+ groups):**
+
+```javascript
+const sectionGap = 100;
+let currentY = padding;
+
+for (const subSection of subSections) {
+  subSection.x = padding;
+  subSection.y = currentY;
+  currentY += subSection.height + sectionGap;
+}
+```
+
+**Positioning sub-sections (horizontal — for 2 groups or when user prefers):**
+
+```javascript
+let currentX = padding;
+
+for (const subSection of subSections) {
+  subSection.x = currentX;
+  subSection.y = padding;
+  currentX += subSection.width + sectionGap;
+}
+```
+
 ## Step 5: Validate Arrangement
 
 Call `get_screenshot` on the section/frame. Verify:
-- All screens horizontally aligned at the same y-position
+- All screens horizontally aligned within each section/sub-section
 - Consistent spacing between screens
+- Sub-sections properly stacked (vertical or horizontal)
 - No overlapping elements
 
-Fix any issues before proceeding. Do NOT add labels on top of misaligned screens.
+Fix any issues before proceeding.
 
-## Step 6: Add Labels
+## Step 6: Add/Reposition Labels
+
+Depends on Step 3 choice:
+- **Keep & reposition:** Move existing label text nodes to correct positions above their associated screens
+- **Update / Fresh:** Create new labels
+
+### Creating labels
 
 Two modes depending on user choice:
 
-### Mode A: Use element names (default)
+**Mode A: Use element names (default)**
 
 ```javascript
 // Switch page first
@@ -255,7 +369,7 @@ const container = figma.getNodeById("<nodeId>");
 
 // Re-collect screens (same filter as Step 4)
 const screens = container.children
-  .filter(c => { /* same screen filter */ })
+  .filter(c => { /* same screen filter — exclude TEXT nodes and notes */ })
   .sort((a, b) => a.x - b.x || a.y - b.y);
 
 const createdIds = [];
@@ -279,7 +393,7 @@ return { labelsCreated: createdIds.length, createdNodeIds: createdIds };
 
 **Font fallback:** If Inter loading fails, try "Roboto" then "Arial". Inform the user which font was used.
 
-### Mode B: Auto-detect from content
+**Mode B: Auto-detect from content**
 
 1. Call `get_screenshot` on each individual screen element (by node ID) — this happens outside `use_figma`, using the MCP screenshot tool directly
 2. Analyze the screenshot content — identify what the screen shows
@@ -293,6 +407,23 @@ return { labelsCreated: createdIds.length, createdNodeIds: createdIds };
 - Focus on the primary content/feature shown, not the UI chrome
 - For modals/dialogs, name the modal (e.g., "Calendar Invitation Email")
 - For settings panels, name the setting category (e.g., "Limits & Buffers")
+
+### Repositioning existing labels
+
+If user chose "keep & reposition" in Step 3, match each existing label to its nearest screen by x-position and move it above:
+
+```javascript
+// For each existing label, find the closest screen and reposition
+for (const label of existingLabels) {
+  const labelNode = figma.getNodeById(label.id);
+  // Find closest screen by x-position
+  const closestScreen = screens.reduce((closest, s) =>
+    Math.abs(s.x - label.x) < Math.abs(closest.x - label.x) ? s : closest
+  );
+  labelNode.x = closestScreen.x;
+  labelNode.y = closestScreen.y - 70 - labelNode.height;
+}
+```
 
 ## Step 7: Validate Labels
 
@@ -351,7 +482,7 @@ return { notesCreated: createdIds.length, createdNodeIds: createdIds };
 
 ### Path B: Default note template
 
-Create a note frame from scratch. **This entire block must run in a single `use_figma` call** since the template reference only exists within that execution context:
+**This entire block must run in a single `use_figma` call** since the template reference only exists within that execution context:
 
 ```javascript
 // Switch page, load fonts
@@ -405,7 +536,7 @@ note.y = -1000;
 const screens = container.children
   .filter(c => {
     if (c.visible === false) return false;
-    if (c.type === "TEXT" && c.fontSize === 70) return false;
+    if (c.type === "TEXT") return false;
     if (c === note) return false; // skip the template
     if (c.type === "INSTANCE" && c.width <= 450) return false;
     if (c.type === "FRAME" && c.name === "Dev Note" && c.width <= 450) return false;
@@ -429,9 +560,9 @@ note.remove();
 return { notesCreated: createdIds.length, createdNodeIds: createdIds };
 ```
 
-## Step 9: Resize Section to Fit Content
+## Step 9: Resize Section(s) to Fit Content
 
-Calculate content bounds and resize the section so it wraps all content with padding.
+Calculate content bounds and resize. If sub-sections were created, resize each sub-section first, then the parent.
 
 ```javascript
 // Switch page first
@@ -440,30 +571,41 @@ for (const page of figma.root.children) {
   if (figma.getNodeById("<childId>")) break;
 }
 
-const section = figma.getNodeById("<sectionId>");
-let maxX = 0, maxY = 0;
-
-for (const child of section.children) {
-  const right = child.x + child.width;
-  const bottom = child.y + child.height;
-  if (right > maxX) maxX = right;
-  if (bottom > maxY) maxY = bottom;
+// Resize a section to fit its content
+function resizeToFit(section) {
+  let maxX = 0, maxY = 0;
+  for (const child of section.children) {
+    const right = child.x + child.width;
+    const bottom = child.y + child.height;
+    if (right > maxX) maxX = right;
+    if (bottom > maxY) maxY = bottom;
+  }
+  const padding = 100;
+  section.resizeWithoutConstraints(maxX + padding, maxY + padding);
 }
 
-const padding = 100;
-section.resizeWithoutConstraints(maxX + padding, maxY + padding);
+const parent = figma.getNodeById("<sectionId>");
 
-return { newWidth: maxX + padding, newHeight: maxY + padding };
+// If sub-sections exist, resize each first
+for (const child of parent.children) {
+  if (child.type === "SECTION") resizeToFit(child);
+}
+
+// Then resize parent
+resizeToFit(parent);
+
+return { resized: true };
 ```
 
 ## Step 10: Final Validation
 
 Call `get_screenshot` on the full section/frame. Verify:
-- Screens aligned horizontally
+- Screens aligned within each section/sub-section
 - Labels positioned above each screen with consistent gap
 - Dev notes (if added) positioned to the right of each screen
+- Sub-sections properly stacked and styled
 - No overlapping or clipped elements
-- Section properly sized to fit all content
+- All sections properly sized
 
 Fix any issues before showing the user.
 
@@ -471,11 +613,11 @@ Fix any issues before showing the user.
 
 Show the user the final screenshot and summarize:
 
-> **Done.** Organized X screens with labels and dev notes.
+> **Done.** Organized X screens into Y section(s) with labels and dev notes.
 >
 > **Spacing defaults used:**
 > - Label gap: 70px | Screen-to-note: 50px | Note-to-next: 200px | Padding: 100px
 >
-> Want to adjust spacing?
+> Want to adjust spacing, grouping, or layout direction?
 
-If the user requests spacing changes, re-run Steps 3-10 with updated values.
+If the user requests changes, re-run the relevant steps with updated values.
