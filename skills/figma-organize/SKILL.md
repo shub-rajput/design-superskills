@@ -447,9 +447,8 @@ for (const screen of sortedScreens) {
 ### Handling duplicate screen names
 
 When multiple screens share the same name (e.g., three frames all named "Submissions"):
-- **If using element names (Mode A):** labels will be identical. This is fine — position makes them distinguishable.
-- **If auto-detecting (Mode B):** screenshot each screen to generate unique descriptive labels. This is the recommended approach when names collide.
-- **Tip:** If you detect 3+ screens with the same name, suggest auto-detect mode to the user even if they chose Mode A.
+- **Mode A (element names):** If duplicates are detected, automatically screenshot only the duplicate screens and generate unique descriptive labels for those. Non-duplicate screens keep their element names. No need to ask the user — just enrich silently.
+- **Mode B (auto-detect):** All screens are screenshotted anyway, so duplicates are handled naturally.
 
 ## Step 7: Validate Labels
 
