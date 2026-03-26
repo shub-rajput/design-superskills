@@ -37,16 +37,13 @@ Organize scattered design screens inside a Figma section or frame into a clean, 
 
 Do NOT proceed without it.
 
-2. **figma-use skill** — load `figma:figma-use` via the Skill tool before making any `use_figma` call. This provides API safety rules and gotchas. If unavailable, proceed but follow these critical rules yourself:
-   - Every `use_figma` call must switch page via `setCurrentPageAsync` first
-   - Colors use 0-1 range (not 0-255)
-   - Fills/strokes are read-only — clone, modify, reassign as new arrays
-   - `loadFontAsync` before any text property changes
-   - `layoutSizingHorizontal/Vertical = "FILL"` must be set AFTER `appendChild`
-   - Always `return` all created/mutated node IDs
-   - **Page-switch gotcha:** FRAME children are accessible cross-page, but TEXT and INSTANCE nodes require the correct page. The `if (figma.getNodeById("<childId>")) break;` preamble in subsequent steps relies on `<childId>` being a FRAME ID from Step 2's discovery. If classification finds 0 labels when you expect them, you're on the wrong page — re-run the full discovery loop from Step 2.
-   - **Section node gotcha:** Figma SECTION nodes may silently discard or auto-reparent children that spatially overlap existing frames between script executions. If created labels vanish on the next `use_figma` call, position them so they don't overlap any frame bounds. Always verify children exist with a read-back call before proceeding.
-   - **Stop on repeated failure:** If the same operation fails twice with the same outcome, STOP and investigate. Do not retry blindly — read back the container's children to understand what happened.
+2. **figma-use skill** — load `figma:figma-use` via the Skill tool before any `use_figma` call.
+
+3. **Figma Section gotchas** — critical, cause silent failures:
+   - **Page discovery:** FRAME children are accessible cross-page, but TEXT/INSTANCE require the correct page. Verify ALL children have accessible properties (`every(c => c.type !== undefined && c.width !== undefined)`), not just the first FRAME.
+   - **Page-level TEXT:** Figma stores TEXT nodes placed inside SECTIONs as page-level children — they won't appear in `section.children`. Scan `figma.currentPage.children` for TEXT nodes whose `absoluteBoundingBox` falls within section bounds. These are existing labels (canvas-absolute coords — convert using `section.absoluteBoundingBox`).
+   - **Overlapping children:** SECTION nodes may discard children that overlap existing frames between calls. Position new nodes to avoid overlaps.
+   - **Stop on repeated failure:** If same operation fails twice, STOP and read back children before retrying.
 
 ## Step 1: Parse User Intent
 
@@ -128,6 +125,29 @@ for (const child of container.children) {
   }
 }
 
+// Also scan the PAGE for TEXT nodes within the section bounds.
+// Figma reparents manually-placed section text to the page level —
+// these are existing labels and must be detected here.
+const sectionBounds = container.absoluteBoundingBox;
+if (sectionBounds) {
+  for (const node of figma.currentPage.children) {
+    if (node.type !== "TEXT" || node.visible === false) continue;
+    const nb = node.absoluteBoundingBox;
+    if (!nb) continue;
+    const insideX = nb.x >= sectionBounds.x && nb.x + nb.width <= sectionBounds.x + sectionBounds.width;
+    const insideY = nb.y >= sectionBounds.y && nb.y + nb.height <= sectionBounds.y + sectionBounds.height;
+    if (insideX && insideY) {
+      existingLabels.push({
+        id: node.id, name: node.name,
+        characters: node.characters,
+        x: node.x, y: node.y,          // canvas-absolute coords
+        width: node.width, height: node.height,
+        pageLevel: true                 // flag: reposition using canvas coords
+      });
+    }
+  }
+}
+
 return {
   screens: screens.sort((a, b) => a.x - b.x || a.y - b.y),
   existingLabels,
@@ -141,7 +161,7 @@ return {
 
 | Type | Detection |
 |------|-----------|
-| **Label** | `type === "TEXT"` (any direct-child text node is a label) |
+| **Label** | `type === "TEXT"` in section children OR page-level TEXT whose `absoluteBoundingBox` falls within section bounds (`pageLevel: true`) |
 | **Note (instance)** | `type === "INSTANCE"` AND `width <= 450` |
 | **Note (default)** | `type === "FRAME"` AND `name === "Dev Note"` AND `width <= 450` |
 | **Screen** | Everything else that's visible |
@@ -375,6 +395,22 @@ for (const child of container.children) {
     screens.push(child);
   }
 }
+
+// Scan page-level TEXT nodes ONCE (Figma reparents section text to page)
+const sectionBounds = container.absoluteBoundingBox;
+if (sectionBounds) {
+  for (const node of figma.currentPage.children) {
+    if (node.type !== "TEXT" || node.visible === false) continue;
+    const nb = node.absoluteBoundingBox;
+    if (!nb) continue;
+    if (nb.x >= sectionBounds.x && nb.x + nb.width <= sectionBounds.x + sectionBounds.width &&
+        nb.y >= sectionBounds.y && nb.y + nb.height <= sectionBounds.y + sectionBounds.height) {
+      node._pageLevel = true; // flag for coordinate conversion
+      existingLabels.push(node);
+    }
+  }
+}
+
 screens.sort((a, b) => a.x - b.x || a.y - b.y);
 
 // labelTexts is an array of strings, one per screen (from Mode A or B)
@@ -382,6 +418,9 @@ screens.sort((a, b) => a.x - b.x || a.y - b.y);
 const labelTexts = /* Mode A */ screens.map(s => s.name);
 // OR for Mode B: labelMap is built earlier from get_screenshot analysis
 // const labelTexts = screens.map(s => labelMap.get(s.id) || s.name);
+
+// Get section's absolute position (needed for page-level labels)
+const sectionAbs = container.absoluteBoundingBox;
 
 // Match existing labels to screens by x-proximity, then reuse them
 const usedLabels = new Set();
@@ -424,8 +463,14 @@ for (let i = 0; i < screens.length; i++) {
       if (bestLabel.characters !== newText) {
         bestLabel.characters = newText;
       }
-      bestLabel.x = screen.x;
-      bestLabel.y = screen.y - 70 - bestLabel.height;
+      // Page-level labels use canvas-absolute coords
+      if (bestLabel._pageLevel && sectionAbs) {
+        bestLabel.x = sectionAbs.x + screen.x;
+        bestLabel.y = sectionAbs.y + screen.y - 70 - bestLabel.height;
+      } else {
+        bestLabel.x = screen.x;
+        bestLabel.y = screen.y - 70 - bestLabel.height;
+      }
       usedLabels.add(bestLabel.id);
       mutatedIds.push(bestLabel.id);
     }

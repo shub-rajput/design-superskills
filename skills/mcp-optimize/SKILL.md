@@ -39,16 +39,13 @@ Clone design screens and create lightweight, AI-readable versions optimized for 
 
 Do NOT proceed without it.
 
-2. **figma-use skill** — load `figma:figma-use` via the Skill tool before making any `use_figma` call. If unavailable, proceed but follow these critical rules yourself:
-   - Every `use_figma` call must switch page via `setCurrentPageAsync` first
-   - Colors use 0-1 range (not 0-255)
-   - Fills/strokes are read-only — clone, modify, reassign as new arrays
-   - `loadFontAsync` before any text property changes
-   - `layoutSizingHorizontal/Vertical = "FILL"` must be set AFTER `appendChild`
-   - Always `return` all created/mutated node IDs
-   - **Page-switch gotcha:** FRAME children are accessible cross-page, but TEXT and INSTANCE nodes require the correct page. The `if (figma.getNodeById("<childId>")) break;` preamble in subsequent steps relies on `<childId>` being a FRAME ID from Step 2's discovery. If classification misses expected children, re-run the full discovery loop from Step 2.
-   - **Section node gotcha:** Figma SECTION nodes may silently discard or auto-reparent children that spatially overlap existing frames between script executions. If cloned nodes or frames vanish, check for spatial overlaps. Always verify children exist with a read-back call before proceeding.
-   - **Stop on repeated failure:** If the same operation fails twice with the same outcome, STOP and investigate. Do not retry blindly — read back the container's children to understand what happened.
+2. **figma-use skill** — load `figma:figma-use` via the Skill tool before any `use_figma` call.
+
+3. **Figma Section gotchas** — critical, cause silent failures:
+   - **Page discovery:** FRAME children are accessible cross-page, but TEXT/INSTANCE require the correct page. Verify ALL children have accessible properties (`every(c => c.type !== undefined && c.width !== undefined)`).
+   - **Overlapping children:** SECTION nodes may discard children that overlap existing frames between calls. Verify children exist with read-back.
+   - **Timeout non-atomicity:** Timed-out `use_figma` calls may have partially executed. Always read back after timeouts.
+   - **Stop on repeated failure:** If same operation fails twice, STOP and read back children before retrying.
 
 ## Step 1: Parse User Intent
 
