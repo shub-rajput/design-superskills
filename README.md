@@ -1,6 +1,6 @@
 # design-superskills
 
-Claude Code plugin for design research — screenshot capture, annotated UX/marketing galleries, and Figma import.
+Claude Code plugin for design research and Figma organization — screenshot capture, annotated UX/marketing galleries, Figma screen organization, dev annotations, and MCP optimization.
 
 ## How it works
 
@@ -8,11 +8,13 @@ Tell Claude Code what you want to review — a WordPress plugin's admin UI, a co
 
 The plugin launches a headless browser, navigates through pages you care about, and captures screenshots. Then it dispatches review agents that analyze each screenshot through lenses you choose (UX quality, first-time experience, monetization, marketing effectiveness, conversion flow, and more). Everything comes together in an annotated HTML gallery — screenshots grouped by section, with issue callouts, opportunity scores, and comparison tables when you're reviewing multiple subjects. If you use Figma, the gallery imports directly.
 
-Three skills power this:
+Five skills power this:
 
 - **wp-plugin-research** — Screenshot and UX-review WordPress plugin admin UIs (local or remote)
 - **website-research** — Screenshot and marketing-review any public website
-- **figma-organize** — Organize scattered Figma screens into labeled layouts with optional dev notes
+- **design-organize** — Organize scattered Figma screens into labeled layouts with optional sub-sections
+- **design-annotations** — Add, reposition, or improve dev note components next to Figma screens
+- **mcp-optimize** — Create MCP-optimized versions of Figma screens for AI consumption
 
 ---
 
@@ -84,7 +86,9 @@ design-superskills/
 ├── skills/
 │   ├── wp-plugin-research/    # WP plugin screenshot capture + UX review
 │   ├── website-research/      # Public website screenshot capture + marketing review
-│   └── figma-organize/        # Figma screen organization + labeling + dev notes
+│   ├── design-organize/       # Figma screen organization + labeling
+│   ├── design-annotations/    # Dev note placement + copy improvement
+│   └── mcp-optimize/          # MCP-optimized sections + asset extraction
 ├── agents/
 │   ├── ux-reviewer.md         # UX analysis of WP plugin admin screenshots
 │   ├── ux-comparator.md       # Side-by-side plugin comparison
@@ -120,9 +124,17 @@ Both skills are invoked by describing your intent in natural language. Claude Co
 > "Capture and review the marketing page for wpforms.com"
 > "Compare the pricing pages of the top 3 email marketing tools"
 
-**Figma organize:**
+**Design organize:**
 > "Organize this section https://figma.com/design/..."
 > "Clean up and label these screens in Figma"
+
+**Design annotations:**
+> "Add dev notes to the first 3 screens in this section"
+> "Improve the copy on existing dev notes"
+
+**MCP optimize:**
+> "Optimize these screens for MCP"
+> "Create lightweight dev-ready versions of these designs"
 
 ## Review Objectives
 
@@ -145,9 +157,9 @@ Both skills support multiple review lenses:
 
 ## Figma Setup
 
-Only needed if you want to import galleries into Figma.
+Required for **design-organize**, **design-annotations**, **mcp-optimize**, and Figma gallery import.
 
-The skill requires the **remote Figma MCP server** — not the built-in Claude AI Figma integration. The remote MCP provides `generate_figma_design`, which handles the HTML-to-Figma capture workflow.
+These skills require the **remote Figma MCP server** — not the built-in Claude AI Figma integration.
 
 ```bash
 claude mcp add --scope user --transport http figma https://mcp.figma.com/mcp
