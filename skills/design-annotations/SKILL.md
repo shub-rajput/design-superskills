@@ -17,8 +17,8 @@ Add, reposition, or improve dev note components next to design screens in Figma.
 | **1** | Parse user intent |
 | **2** | Read container, classify children (screens vs labels vs notes) |
 | **3** | Version safety — save Figma version |
-| **4** | Dev notes: add new / reposition / improve copy |
-| **4b** | Reflow — shift screens/labels to avoid note overlap |
+| **3b** | Determine note width (component variant or default 400px) |
+| **4** | Reposition screens/labels for note width, then place notes |
 | **5** | Validate (get_screenshot) |
 | **6** | Present result, offer mcp-optimize |
 
@@ -42,6 +42,8 @@ Do NOT proceed without it.
    - `layoutSizingHorizontal/Vertical = "FILL"` must be set AFTER `appendChild`
    - Always `return` all created/mutated node IDs
    - **Page-switch gotcha:** `getNodeById()` works cross-page once a page has been loaded into memory. The `if (figma.getNodeById("<childId>")) break;` preamble in subsequent steps relies on `<childId>` being set from Step 2's discovery loop. If nodes appear to exist but have no accessible properties, re-run the full page discovery from Step 2.
+   - **Section node gotcha:** Figma SECTION nodes may silently discard or auto-reparent children that spatially overlap existing frames between script executions. If you create labels or notes as direct children of a SECTION and they vanish on the next `use_figma` call, try: (1) position them so they don't overlap any frame bounds, or (2) use a parent FRAME inside the section as the container instead. Always verify children exist with a read-back call before proceeding.
+   - **Stop on repeated failure:** If the same operation fails twice with the same outcome (e.g., nodes vanish after creation), STOP and investigate the root cause. Do not retry blindly — it wastes rounds. Read back the container's children to understand what happened before attempting a fix.
 
 ## Step 1: Parse User Intent
 
@@ -56,6 +58,22 @@ The user has provided a Figma link to a section or frame. Extract `fileKey` and 
 | Ambiguous (e.g., just a link + "annotations") | Classify children first (Step 2), then ask |
 
 If intent is clear, skip the ambiguity questions in Step 2 and go directly to the relevant path.
+
+**Even when intent is clear, you MUST still ask about preferences before creating notes.** Do not assume defaults — always confirm:
+
+> **Which screens get dev notes?**
+> - A) All screens
+> - B) Let me pick (I'll list the screens for you to choose)
+>
+> **Format:**
+> - A) Use a component from your design system (I'll search for it)
+> - B) Use a default note template
+>
+> **Content:**
+> - A) Pre-fill with AI-generated descriptions (I'll screenshot each screen)
+> - B) Leave empty for manual editing
+
+Skip only questions the user's message already answers (e.g., "add Developer Note components to all screens, leave empty").
 
 ## Step 2: Read Container and Classify Children
 
@@ -147,6 +165,17 @@ When no existing notes are found:
 > - A) Use a component from your design system (I'll search for it)
 > - B) Use a default note template
 
+**If user chose "let me pick" for screen selection in Step 1**, list the screens now:
+
+> **Found X screens. Which ones get dev notes?**
+> 1. Screen Name A (1280×800)
+> 2. Screen Name B (1280×800)
+> 3. ...
+>
+> Enter numbers (e.g., "1, 3, 5") or "all"
+
+Store selected IDs as `selectedScreenIds` for Steps 4a and 4b.
+
 ## Step 3: Version Safety
 
 **Before making any changes**, ask the user to save a version manually:
@@ -157,20 +186,130 @@ When no existing notes are found:
 
 Wait for confirmation before continuing to Step 4.
 
-## Step 4: Dev Notes
+## Step 3b: Determine Note Width
 
-### Path A: Add New Notes (user-provided component)
+**Before placing any notes, you must know the note width.** This is needed to pre-allocate space in Step 4.
 
+**For Path A (component):**
 1. Ask for component name if not provided in the user's message
 2. Call `mcp__figma__search_design_system` with the component name
 3. Check `assetType` in results:
    - `component` → `await figma.importComponentByKeyAsync(componentKey)`
-   - `component_set` → `await figma.importComponentSetByKeyAsync(componentKey)`, pick default variant (first child)
-4. For each screen: `createInstance()`, position at `screen.x + screen.width + 50`, `screen.y`
-5. Append to container
-6. Return all instance IDs
+   - `component_set` → import it, then **list all variants and ask the user which one to use**. Do NOT silently pick the default — it may be the wrong size (e.g., XL instead of Normal).
+4. **Create ONE test instance** and report its dimensions. Confirm before proceeding.
+5. Record `noteWidth` from the test instance. Remove it (or keep it for the first screen).
 
-If `search_design_system` returns no results, inform the user and offer the default template (Path B) instead.
+If `search_design_system` returns no results, inform the user and offer the default template (Path B).
+
+**For Path B (default template):** `noteWidth = 400` (fixed width).
+
+**For Path C (improve copy):** Skip this step — no new notes placed, no repositioning needed.
+
+## Step 4: Reposition Screens & Labels, Then Place Notes
+
+**Critical: reposition BEFORE placing notes.** Notes overlap adjacent screens if screens aren't spaced for them. The correct order is:
+
+1. Determine which screens get notes (all, or user-selected subset from Step 1)
+2. Calculate new spacing: screens WITH notes get `noteGap (50) + noteWidth + screenToNextGap (200)`. Screens WITHOUT notes keep the original gap.
+3. Reposition all screens and their labels
+4. Place notes in the pre-allocated space
+5. Resize the section
+
+### Step 4a: Reposition screens and labels
+
+```javascript
+// Switch page first
+for (const page of figma.root.children) {
+  await figma.setCurrentPageAsync(page);
+  if (figma.getNodeById("<childId>")) break;
+}
+
+const container = figma.getNodeById("<nodeId>");
+const noteWidth = <noteWidth>; // from Step 3b
+const noteGap = 50; // gap between screen and note
+const noteToNextScreenGap = 200; // gap between note and next screen
+const screenToScreenGap = 200; // gap for screens without notes
+
+// selectedScreenIds: array of screen IDs that get notes (all screens if user chose A)
+// If user chose B (pick specific), this is the subset they selected
+const selectedScreenIds = new Set(<selectedScreenIds>);
+
+// Re-read children
+const screens = [];
+const labels = [];
+
+for (const child of container.children) {
+  if (child.visible === false) continue;
+  if (child.type === "TEXT") {
+    labels.push(child);
+  } else if (!(child.type === "INSTANCE" && child.width <= 450) &&
+             !(child.type === "FRAME" && child.name === "Dev Note" && child.width <= 450)) {
+    screens.push(child);
+  }
+}
+
+screens.sort((a, b) => a.x - b.x || a.y - b.y);
+
+// Match labels to screens by x-proximity (before moving anything)
+const labelMap = new Map(); // screenIndex → label
+for (const label of labels) {
+  let bestIdx = -1;
+  let bestDist = Infinity;
+  for (let i = 0; i < screens.length; i++) {
+    const dist = Math.abs(label.x - screens[i].x);
+    if (dist < bestDist) { bestDist = dist; bestIdx = i; }
+  }
+  if (bestIdx >= 0 && bestDist < 2000) {
+    labelMap.set(bestIdx, label);
+  }
+}
+
+// Reposition each screen with space for a note to its right
+const padding = 100;
+let currentX = screens[0].x; // preserve starting position
+const mutatedIds = [];
+
+for (let i = 0; i < screens.length; i++) {
+  const screen = screens[i];
+  const oldX = screen.x;
+  screen.x = currentX;
+  mutatedIds.push(screen.id);
+
+  // Move label to follow screen
+  const label = labelMap.get(i);
+  if (label) {
+    label.x = currentX;
+    mutatedIds.push(label.id);
+  }
+
+  // Screens with notes get extra space; screens without keep normal gap
+  if (selectedScreenIds.has(screen.id)) {
+    currentX += screen.width + noteGap + noteWidth + noteToNextScreenGap;
+  } else {
+    currentX += screen.width + screenToScreenGap;
+  }
+}
+
+// Resize section to fit
+let maxX = 0, maxY = 0;
+for (const child of container.children) {
+  const right = child.x + child.width;
+  const bottom = child.y + child.height;
+  if (right > maxX) maxX = right;
+  if (bottom > maxY) maxY = bottom;
+}
+container.resizeWithoutConstraints(maxX + padding, maxY + padding);
+
+return { repositioned: mutatedIds.length, mutatedNodeIds: [...new Set(mutatedIds)] };
+```
+
+**Verify with `get_screenshot`** that screens are evenly spaced with visible gaps for notes.
+
+### Step 4b: Place notes (Path A or B)
+
+#### Path A: Add New Notes (user-provided component)
+
+Screens are already repositioned from Step 4a. Place notes in the pre-allocated space:
 
 ```javascript
 // Switch page first
@@ -183,10 +322,15 @@ const container = figma.getNodeById("<nodeId>");
 
 // Import component (adjust based on assetType)
 const component = await figma.importComponentByKeyAsync("<componentKey>");
-// OR for component_set:
+// OR for component_set — list variants, DO NOT auto-pick default:
 // const componentSet = await figma.importComponentSetByKeyAsync("<componentKey>");
-// const component = componentSet.children[0]; // default variant
+// const variants = componentSet.children.map(c => ({
+//   name: c.name, width: c.width, height: c.height
+// }));
+// return { variants }; // Present to user, ask which one
+// Then: const component = componentSet.children.find(c => c.name === "<chosen variant>");
 
+// Only annotate selected screens (selectedScreenIds from Step 1)
 const screens = container.children
   .filter(c => {
     if (c.visible === false) return false;
@@ -195,6 +339,7 @@ const screens = container.children
     if (c.type === "FRAME" && c.name === "Dev Note" && c.width <= 450) return false;
     return true;
   })
+  .filter(c => selectedScreenIds.has(c.id))
   .sort((a, b) => a.x - b.x || a.y - b.y);
 
 const createdIds = [];
@@ -210,7 +355,7 @@ for (const screen of screens) {
 return { notesCreated: createdIds.length, createdNodeIds: createdIds };
 ```
 
-### Path B: Add New Notes (default template)
+#### Path B: Add New Notes (default template)
 
 **This entire block must run in a single `use_figma` call** since the template reference only exists within that execution context:
 
@@ -262,7 +407,7 @@ container.appendChild(note);
 note.x = -1000;
 note.y = -1000;
 
-// Clone for each screen
+// Clone for each selected screen
 const screens = container.children
   .filter(c => {
     if (c.visible === false) return false;
@@ -272,6 +417,7 @@ const screens = container.children
     if (c.type === "FRAME" && c.name === "Dev Note" && c.width <= 450) return false;
     return true;
   })
+  .filter(c => selectedScreenIds.has(c.id))
   .sort((a, b) => a.x - b.x || a.y - b.y);
 
 const createdIds = [];
@@ -290,7 +436,7 @@ note.remove();
 return { notesCreated: createdIds.length, createdNodeIds: createdIds };
 ```
 
-### Path C: Improve Existing Copy
+#### Path C: Improve Existing Copy
 
 Use when existing dev notes are found and the user wants to improve their text content.
 
@@ -393,98 +539,6 @@ for (const update of updates) {
 
 return { updated: mutatedIds.length, mutatedNodeIds: mutatedIds };
 ```
-
-### Step 4b: Reflow (after Path A or B)
-
-After placing notes, check for overlaps and shift screens + labels if needed. Notes placed at `screen.x + screen.width + 50` may overlap the next screen. This step prevents that.
-
-```javascript
-// Switch page first
-for (const page of figma.root.children) {
-  await figma.setCurrentPageAsync(page);
-  if (figma.getNodeById("<childId>")) break;
-}
-
-const container = figma.getNodeById("<nodeId>");
-
-// Re-read all children: screens, labels, notes
-const screens = [];
-const labels = [];
-const notes = [];
-
-for (const child of container.children) {
-  if (child.visible === false) continue;
-  if (child.type === "TEXT") {
-    labels.push(child);
-  } else if ((child.type === "INSTANCE" && child.width <= 450) ||
-             (child.type === "FRAME" && child.name === "Dev Note" && child.width <= 450)) {
-    notes.push(child);
-  } else {
-    screens.push(child);
-  }
-}
-
-screens.sort((a, b) => a.x - b.x || a.y - b.y);
-
-// For each screen, check if its note overlaps the next screen
-const noteGap = 50; // gap between screen and note
-const screenGap = 200; // minimum gap between note and next screen
-const mutatedIds = [];
-
-for (let i = 0; i < screens.length - 1; i++) {
-  const screen = screens[i];
-  // Find the note for this screen (closest note to the right)
-  const screenNote = notes.find(n =>
-    Math.abs(n.x - (screen.x + screen.width + noteGap)) < 100 &&
-    Math.abs(n.y - screen.y) < 50
-  );
-  if (!screenNote) continue;
-
-  const noteRight = screenNote.x + screenNote.width;
-  const nextScreen = screens[i + 1];
-  const overlap = noteRight + screenGap - nextScreen.x;
-
-  if (overlap > 0) {
-    // Shift all screens from i+1 onward, plus their labels and notes
-    for (let j = i + 1; j < screens.length; j++) {
-      screens[j].x += overlap;
-      mutatedIds.push(screens[j].id);
-
-      // Find and shift this screen's label (text node directly above)
-      const screenLabel = labels.find(l =>
-        Math.abs(l.x - (screens[j].x - overlap)) < 50
-      );
-      if (screenLabel) {
-        screenLabel.x += overlap;
-        mutatedIds.push(screenLabel.id);
-      }
-
-      // Find and shift this screen's note (to the right)
-      const screenNoteJ = notes.find(n =>
-        Math.abs(n.x - (screens[j].x - overlap + screens[j].width + noteGap)) < 100
-      );
-      if (screenNoteJ) {
-        screenNoteJ.x += overlap;
-        mutatedIds.push(screenNoteJ.id);
-      }
-    }
-  }
-}
-
-// Resize the section to fit new bounds
-let maxX = 0, maxY = 0;
-for (const child of container.children) {
-  const right = child.x + child.width;
-  const bottom = child.y + child.height;
-  if (right > maxX) maxX = right;
-  if (bottom > maxY) maxY = bottom;
-}
-container.resizeWithoutConstraints(maxX + 100, maxY + 100);
-
-return { shifted: mutatedIds.length, mutatedNodeIds: [...new Set(mutatedIds)] };
-```
-
-**Skip this step for Path C** (copy improvement only — no new notes placed, no position changes).
 
 ## Step 5: Validate
 

@@ -45,6 +45,8 @@ Do NOT proceed without it.
    - `layoutSizingHorizontal/Vertical = "FILL"` must be set AFTER `appendChild`
    - Always `return` all created/mutated node IDs
    - **Page-switch gotcha:** `getNodeById()` works cross-page once a page has been loaded into memory. The `if (figma.getNodeById("<childId>")) break;` preamble in subsequent steps relies on `<childId>` being set from Step 2's discovery loop. If nodes appear to exist but have no accessible properties, re-run the full page discovery from Step 2.
+   - **Section node gotcha:** Figma SECTION nodes may silently discard or auto-reparent children that spatially overlap existing frames between script executions. If created labels vanish on the next `use_figma` call, position them so they don't overlap any frame bounds. Always verify children exist with a read-back call before proceeding.
+   - **Stop on repeated failure:** If the same operation fails twice with the same outcome, STOP and investigate. Do not retry blindly — read back the container's children to understand what happened.
 
 ## Step 1: Parse User Intent
 
