@@ -41,7 +41,7 @@ Do NOT proceed without it.
    - `loadFontAsync` before any text property changes
    - `layoutSizingHorizontal/Vertical = "FILL"` must be set AFTER `appendChild`
    - Always `return` all created/mutated node IDs
-   - **Page-switch gotcha:** `getNodeById()` works cross-page once a page has been loaded into memory. The `if (figma.getNodeById("<childId>")) break;` preamble in subsequent steps relies on `<childId>` being set from Step 2's discovery loop. If nodes appear to exist but have no accessible properties, re-run the full page discovery from Step 2.
+   - **Page-switch gotcha:** FRAME children are accessible cross-page, but TEXT and INSTANCE nodes require the correct page. The `if (figma.getNodeById("<childId>")) break;` preamble in subsequent steps relies on `<childId>` being a FRAME ID from Step 2's discovery. If classification finds 0 labels or 0 notes when you expect them, you're on the wrong page — re-run the full discovery loop from Step 2.
    - **Section node gotcha:** Figma SECTION nodes may silently discard or auto-reparent children that spatially overlap existing frames between script executions. If you create labels or notes as direct children of a SECTION and they vanish on the next `use_figma` call, try: (1) position them so they don't overlap any frame bounds, or (2) use a parent FRAME inside the section as the container instead. Always verify children exist with a read-back call before proceeding.
    - **Stop on repeated failure:** If the same operation fails twice with the same outcome (e.g., nodes vanish after creation), STOP and investigate the root cause. Do not retry blindly — it wastes rounds. Read back the container's children to understand what happened before attempting a fix.
 
@@ -82,16 +82,17 @@ Find the correct page and read the target node's children. **Critical:** the sec
 **Page discovery approach:** Use a single `use_figma` call that iterates all pages, trying to find the section AND access its children.
 
 ```javascript
-// Iterate all pages to find the one where this section has children.
-// IMPORTANT: getNodeById works cross-page after loading, so checking node
-// existence alone stops on the wrong page. Verify a child's properties
-// are accessible to confirm we're on the correct page.
+// Iterate all pages to find the one where this section's children are FULLY loaded.
+// IMPORTANT: FRAME children are accessible cross-page, but TEXT and INSTANCE nodes
+// are only accessible on the correct page. Checking just the first child's width
+// breaks on the wrong page — you must verify ALL child types are loaded.
 for (const page of figma.root.children) {
   await figma.setCurrentPageAsync(page);
   const section = figma.getNodeById("<nodeId>");
   if (section && section.children && section.children.length > 0) {
-    const firstChild = section.children[0];
-    if (firstChild && firstChild.width !== undefined) break;
+    // Check that all children have accessible properties, not just FRAMEs
+    const allAccessible = section.children.every(c => c.type !== undefined && c.width !== undefined);
+    if (allAccessible) break;
   }
 }
 ```
@@ -140,6 +141,8 @@ return {
 ```
 
 **Important:** Store one screen ID as `<childId>` for the page-switch preamble in subsequent `use_figma` calls.
+
+**Classification validation:** If this section was previously organized with design-organize (which creates labels), but classification returns `existingLabels.length === 0` — the page discovery likely broke on the wrong page. Re-run the page discovery loop above. TEXT and INSTANCE nodes are only accessible on the correct page, even though FRAME children appear to load cross-page.
 
 **Classification rules:**
 

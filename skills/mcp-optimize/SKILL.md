@@ -46,7 +46,7 @@ Do NOT proceed without it.
    - `loadFontAsync` before any text property changes
    - `layoutSizingHorizontal/Vertical = "FILL"` must be set AFTER `appendChild`
    - Always `return` all created/mutated node IDs
-   - **Page-switch gotcha:** `getNodeById()` works cross-page once a page has been loaded into memory. The `if (figma.getNodeById("<childId>")) break;` preamble shown in subsequent steps relies on `<childId>` being set from Step 2's discovery loop (which correctly verifies children are accessible). If you encounter issues where nodes appear to exist but have no accessible properties, re-run the full page discovery from Step 2.
+   - **Page-switch gotcha:** FRAME children are accessible cross-page, but TEXT and INSTANCE nodes require the correct page. The `if (figma.getNodeById("<childId>")) break;` preamble in subsequent steps relies on `<childId>` being a FRAME ID from Step 2's discovery. If classification misses expected children, re-run the full discovery loop from Step 2.
    - **Section node gotcha:** Figma SECTION nodes may silently discard or auto-reparent children that spatially overlap existing frames between script executions. If cloned nodes or frames vanish, check for spatial overlaps. Always verify children exist with a read-back call before proceeding.
    - **Stop on repeated failure:** If the same operation fails twice with the same outcome, STOP and investigate. Do not retry blindly — read back the container's children to understand what happened.
 
@@ -61,15 +61,14 @@ No ambiguity questions needed — if this skill is invoked, the user wants MCP o
 Same page-discovery approach as design-organize. Iterate all pages to find the section, classify children to identify screens (skip labels and notes).
 
 ```javascript
-// Page discovery: getNodeById works cross-page after loading, so checking
-// node existence alone stops on the wrong page. Instead, verify we can
-// actually read a child's properties (width) to confirm correct page.
+// Page discovery: FRAME children are accessible cross-page, but TEXT and
+// INSTANCE nodes require the correct page. Verify ALL children are loaded.
 for (const page of figma.root.children) {
   await figma.setCurrentPageAsync(page);
   const section = figma.getNodeById("<nodeId>");
   if (section && section.children && section.children.length > 0) {
-    const firstChild = section.children[0];
-    if (firstChild && firstChild.width !== undefined) break;
+    const allAccessible = section.children.every(c => c.type !== undefined && c.width !== undefined);
+    if (allAccessible) break;
   }
 }
 
