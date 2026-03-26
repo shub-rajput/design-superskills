@@ -42,7 +42,7 @@ Do NOT proceed without it.
 2. **figma-use skill** — load `figma:figma-use` via the Skill tool before any `use_figma` call.
 
 3. **Figma Section gotchas** — critical, cause silent failures:
-   - **Page discovery:** FRAME children are accessible cross-page, but TEXT/INSTANCE require the correct page. Verify ALL children have accessible properties (`every(c => c.type !== undefined && c.width !== undefined)`).
+   - **Page discovery:** `getNodeById()` works cross-page — it finds nodes on ANY loaded page. Use `figma.currentPage.findOne(n => n.id === "<nodeId>")` instead, which only returns nodes on the current page.
    - **Overlapping children:** SECTION nodes may discard children that overlap existing frames between calls. Verify children exist with read-back.
    - **Timeout non-atomicity:** Timed-out `use_figma` calls may have partially executed. Always read back after timeouts.
    - **Stop on repeated failure:** If same operation fails twice, STOP and read back children before retrying.
@@ -58,15 +58,10 @@ No ambiguity questions needed — if this skill is invoked, the user wants MCP o
 Same page-discovery approach as design-organize. Iterate all pages to find the section, classify children to identify screens (skip labels and notes).
 
 ```javascript
-// Page discovery: FRAME children are accessible cross-page, but TEXT and
-// INSTANCE nodes require the correct page. Verify ALL children are loaded.
+// Use findOne to locate the page that OWNS this node.
 for (const page of figma.root.children) {
   await figma.setCurrentPageAsync(page);
-  const section = figma.getNodeById("<nodeId>");
-  if (section && section.children && section.children.length > 0) {
-    const allAccessible = section.children.every(c => c.type !== undefined && c.width !== undefined);
-    if (allAccessible) break;
-  }
+  if (figma.currentPage.findOne(n => n.id === "<nodeId>")) break;
 }
 
 const container = figma.getNodeById("<nodeId>");
@@ -107,7 +102,7 @@ Clone each screen into a new "MCP Dev Ready" section. **Order matters:** clone t
 // Switch page first
 for (const page of figma.root.children) {
   await figma.setCurrentPageAsync(page);
-  if (figma.getNodeById("<childId>")) break;
+  if (figma.currentPage.findOne(n => n.id === "<childId>")) break;
 }
 
 const container = figma.getNodeById("<nodeId>");
@@ -166,7 +161,7 @@ For each cloned screen, read its top-level auto-layout children to identify natu
 // Switch page first
 for (const page of figma.root.children) {
   await figma.setCurrentPageAsync(page);
-  if (figma.getNodeById("<childId>")) break;
+  if (figma.currentPage.findOne(n => n.id === "<childId>")) break;
 }
 
 // cloneIds from Step 4
@@ -221,7 +216,7 @@ For each confirmed section breakdown, reparent children into named frames:
 // Switch page first
 for (const page of figma.root.children) {
   await figma.setCurrentPageAsync(page);
-  if (figma.getNodeById("<childId>")) break;
+  if (figma.currentPage.findOne(n => n.id === "<childId>")) break;
 }
 
 const mcpSection = figma.getNodeById("<mcpSectionId>");
@@ -327,7 +322,7 @@ Instead of keeping heavy assets in Figma (which defeats MCP optimization), **exp
 // Switch page first
 for (const page of figma.root.children) {
   await figma.setCurrentPageAsync(page);
-  if (figma.getNodeById("<childId>")) break;
+  if (figma.currentPage.findOne(n => n.id === "<childId>")) break;
 }
 
 await figma.loadFontAsync({ family: "Inter", style: "Regular" });
@@ -394,7 +389,7 @@ mkdir -p <output-dir>/assets
 // Switch page first
 for (const page of figma.root.children) {
   await figma.setCurrentPageAsync(page);
-  if (figma.getNodeById("<childId>")) break;
+  if (figma.currentPage.findOne(n => n.id === "<childId>")) break;
 }
 
 await figma.loadFontAsync({ family: "Inter", style: "Regular" });
@@ -469,7 +464,7 @@ Resize the "MCP Dev Ready" section to fit all section frames:
 // Switch page first
 for (const page of figma.root.children) {
   await figma.setCurrentPageAsync(page);
-  if (figma.getNodeById("<childId>")) break;
+  if (figma.currentPage.findOne(n => n.id === "<childId>")) break;
 }
 
 function resizeToFit(section) {

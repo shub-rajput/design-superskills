@@ -40,7 +40,7 @@ Do NOT proceed without it.
 2. **figma-use skill** — load `figma:figma-use` via the Skill tool before any `use_figma` call.
 
 3. **Figma Section gotchas** — critical, cause silent failures:
-   - **Page discovery:** FRAME children are accessible cross-page, but TEXT/INSTANCE require the correct page. Verify ALL children have accessible properties (`every(c => c.type !== undefined && c.width !== undefined)`), not just the first FRAME.
+   - **Page discovery:** `getNodeById()` works cross-page — it will find nodes on ANY loaded page, giving false positives. Use `figma.currentPage.findOne(n => n.id === "<nodeId>")` instead, which only returns nodes that actually live on the current page.
    - **Page-level TEXT:** Figma stores TEXT nodes placed inside SECTIONs as page-level children — they won't appear in `section.children`. Scan `figma.currentPage.children` for TEXT nodes whose `absoluteBoundingBox` falls within section bounds. These are existing labels (canvas-absolute coords — convert using `section.absoluteBoundingBox`).
    - **Overlapping children:** SECTION nodes may discard children that overlap existing frames between calls. Position new nodes to avoid overlaps.
    - **Stop on repeated failure:** If same operation fails twice, STOP and read back children before retrying.
@@ -69,21 +69,21 @@ Find the correct page and read the target node's children. **Critical:** the sec
 **Page discovery approach:** Use a single `use_figma` call that iterates all pages, trying to find the section AND access its children. When the section is found on the correct page, its children will be populated.
 
 ```javascript
-// Iterate all pages to find the one where this section's children are FULLY loaded.
-// IMPORTANT: FRAME children are accessible cross-page, but TEXT and INSTANCE nodes
-// are only accessible on the correct page. You must verify ALL child types are loaded.
+// Use findOne to locate the page that OWNS this node.
+// Do NOT use getNodeById — it returns nodes cross-page, giving false positives.
+let targetPage = null;
 for (const page of figma.root.children) {
   await figma.setCurrentPageAsync(page);
-  const section = figma.getNodeById("<nodeId>");
-  if (section && section.children && section.children.length > 0) {
-    // Check that all children have accessible properties, not just FRAMEs
-    const allAccessible = section.children.every(c => c.type !== undefined && c.width !== undefined);
-    if (allAccessible) break;
+  if (figma.currentPage.findOne(n => n.id === "<nodeId>")) {
+    targetPage = page;
+    break;
   }
 }
 ```
 
-**Why iterate pages:** Section nodes return `children.length === 0` when accessed from the wrong page. Even after switching pages, only FRAME children may be accessible cross-page — TEXT and INSTANCE nodes require being on the actual correct page. The `every()` check ensures all child types are loaded before breaking.
+After finding the page, mention it so the user can catch wrong-page issues early (e.g., "Working on page **[page name]**").
+
+**Why `findOne`:** `getNodeById()` works cross-page once pages load into memory — it returns nodes from ANY page, causing the loop to stop on page 1 regardless of where the section actually lives. `findOne` only searches descendants of the current page.
 
 **Avoid get_metadata for large sections** — it can return 300K+ characters exceeding token limits. Use `use_figma` directly for child classification instead.
 
@@ -215,7 +215,7 @@ Position all screens in a horizontal row:
 // Switch page first
 for (const page of figma.root.children) {
   await figma.setCurrentPageAsync(page);
-  if (figma.getNodeById("<childId>")) break;
+  if (figma.currentPage.findOne(n => n.id === "<childId>")) break;
 }
 
 const container = figma.getNodeById("<nodeId>");
@@ -283,7 +283,7 @@ For larger sets of screens, offer to group them into sub-sections. This can happ
 // Switch page
 for (const page of figma.root.children) {
   await figma.setCurrentPageAsync(page);
-  if (figma.getNodeById("<childId>")) break;
+  if (figma.currentPage.findOne(n => n.id === "<childId>")) break;
 }
 
 const parentSection = figma.getNodeById("<sectionId>");
@@ -520,7 +520,7 @@ Calculate content bounds and resize. If sub-sections were created, resize each s
 // Switch page first
 for (const page of figma.root.children) {
   await figma.setCurrentPageAsync(page);
-  if (figma.getNodeById("<childId>")) break;
+  if (figma.currentPage.findOne(n => n.id === "<childId>")) break;
 }
 
 // Resize a section to fit its content

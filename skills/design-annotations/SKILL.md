@@ -27,7 +27,7 @@ Add, reposition, or improve dev note components next to design screens in Figma.
 2. **figma-use skill** — load `figma:figma-use` via the Skill tool before any `use_figma` call.
 
 3. **Figma Section gotchas** — these are critical and cause silent failures:
-   - **Page discovery:** FRAME children are accessible cross-page, but TEXT and INSTANCE nodes require the correct page. When iterating pages, verify ALL children have accessible properties (`c.type !== undefined && c.width !== undefined` for every child), not just the first FRAME.
+   - **Page discovery:** `getNodeById()` works cross-page — it will find nodes on ANY loaded page, giving false positives. Use `figma.currentPage.findOne(n => n.id === "<nodeId>")` instead, which only returns nodes that actually live on the current page.
    - **Page-level TEXT:** Figma stores TEXT nodes placed inside SECTIONs as page-level children — they won't appear in `section.children`. Scan `figma.currentPage.children` for TEXT nodes whose `absoluteBoundingBox` falls within the section bounds. These are existing labels. Their x/y are canvas-absolute — use `section.absoluteBoundingBox` to convert.
    - **Overlapping children:** SECTION nodes may silently discard children that overlap existing frames between script executions. Position new nodes to avoid overlaps.
    - **Stop on repeated failure:** If the same operation fails twice, STOP and read back children before retrying.
@@ -56,7 +56,7 @@ For "improve copy" intent, skip format/screen questions — go straight to Step 
 
 Use a single `use_figma` call to find the correct page and classify all children:
 
-1. **Page discovery:** Iterate all pages, switch to each, check that ALL `section.children` have accessible properties (not just FRAMEs). Break only when `children.every(c => c.type !== undefined && c.width !== undefined)`.
+1. **Page discovery:** Iterate all pages, switch to each, use `figma.currentPage.findOne(n => n.id === "<nodeId>")` to find the page that owns the node. Do NOT use `getNodeById()` — it returns nodes cross-page. Mention which page you found (e.g., "Working on page **[page name]**") so the user can catch wrong-page issues early.
 
 2. **Classify section children:** screens (everything visible that isn't a label or note), labels (`TEXT` nodes), notes (`INSTANCE` ≤ 450px or `FRAME` named "Dev Note" ≤ 450px).
 
