@@ -18,6 +18,7 @@ Add, reposition, or improve dev note components next to design screens in Figma.
 | **2** | Read container, classify children (screens vs labels vs notes) |
 | **3** | Version safety — save Figma version |
 | **4** | Dev notes: add new / reposition / improve copy |
+| **4b** | Reflow — shift screens/labels to avoid note overlap |
 | **5** | Validate (get_screenshot) |
 | **6** | Present result, offer mcp-optimize |
 
@@ -40,6 +41,7 @@ Do NOT proceed without it.
    - `loadFontAsync` before any text property changes
    - `layoutSizingHorizontal/Vertical = "FILL"` must be set AFTER `appendChild`
    - Always `return` all created/mutated node IDs
+   - **Page-switch gotcha:** `getNodeById()` works cross-page once a page has been loaded into memory. The `if (figma.getNodeById("<childId>")) break;` preamble in subsequent steps relies on `<childId>` being set from Step 2's discovery loop. If nodes appear to exist but have no accessible properties, re-run the full page discovery from Step 2.
 
 ## Step 1: Parse User Intent
 
@@ -62,13 +64,16 @@ Find the correct page and read the target node's children. **Critical:** the sec
 **Page discovery approach:** Use a single `use_figma` call that iterates all pages, trying to find the section AND access its children.
 
 ```javascript
-// Iterate all pages to find the one where this section has children
+// Iterate all pages to find the one where this section has children.
+// IMPORTANT: getNodeById works cross-page after loading, so checking node
+// existence alone stops on the wrong page. Verify a child's properties
+// are accessible to confirm we're on the correct page.
 for (const page of figma.root.children) {
   await figma.setCurrentPageAsync(page);
   const section = figma.getNodeById("<nodeId>");
   if (section && section.children && section.children.length > 0) {
-    // Found the right page — children are loaded
-    break;
+    const firstChild = section.children[0];
+    if (firstChild && firstChild.width !== undefined) break;
   }
 }
 ```
@@ -388,6 +393,98 @@ for (const update of updates) {
 
 return { updated: mutatedIds.length, mutatedNodeIds: mutatedIds };
 ```
+
+### Step 4b: Reflow (after Path A or B)
+
+After placing notes, check for overlaps and shift screens + labels if needed. Notes placed at `screen.x + screen.width + 50` may overlap the next screen. This step prevents that.
+
+```javascript
+// Switch page first
+for (const page of figma.root.children) {
+  await figma.setCurrentPageAsync(page);
+  if (figma.getNodeById("<childId>")) break;
+}
+
+const container = figma.getNodeById("<nodeId>");
+
+// Re-read all children: screens, labels, notes
+const screens = [];
+const labels = [];
+const notes = [];
+
+for (const child of container.children) {
+  if (child.visible === false) continue;
+  if (child.type === "TEXT") {
+    labels.push(child);
+  } else if ((child.type === "INSTANCE" && child.width <= 450) ||
+             (child.type === "FRAME" && child.name === "Dev Note" && child.width <= 450)) {
+    notes.push(child);
+  } else {
+    screens.push(child);
+  }
+}
+
+screens.sort((a, b) => a.x - b.x || a.y - b.y);
+
+// For each screen, check if its note overlaps the next screen
+const noteGap = 50; // gap between screen and note
+const screenGap = 200; // minimum gap between note and next screen
+const mutatedIds = [];
+
+for (let i = 0; i < screens.length - 1; i++) {
+  const screen = screens[i];
+  // Find the note for this screen (closest note to the right)
+  const screenNote = notes.find(n =>
+    Math.abs(n.x - (screen.x + screen.width + noteGap)) < 100 &&
+    Math.abs(n.y - screen.y) < 50
+  );
+  if (!screenNote) continue;
+
+  const noteRight = screenNote.x + screenNote.width;
+  const nextScreen = screens[i + 1];
+  const overlap = noteRight + screenGap - nextScreen.x;
+
+  if (overlap > 0) {
+    // Shift all screens from i+1 onward, plus their labels and notes
+    for (let j = i + 1; j < screens.length; j++) {
+      screens[j].x += overlap;
+      mutatedIds.push(screens[j].id);
+
+      // Find and shift this screen's label (text node directly above)
+      const screenLabel = labels.find(l =>
+        Math.abs(l.x - (screens[j].x - overlap)) < 50
+      );
+      if (screenLabel) {
+        screenLabel.x += overlap;
+        mutatedIds.push(screenLabel.id);
+      }
+
+      // Find and shift this screen's note (to the right)
+      const screenNoteJ = notes.find(n =>
+        Math.abs(n.x - (screens[j].x - overlap + screens[j].width + noteGap)) < 100
+      );
+      if (screenNoteJ) {
+        screenNoteJ.x += overlap;
+        mutatedIds.push(screenNoteJ.id);
+      }
+    }
+  }
+}
+
+// Resize the section to fit new bounds
+let maxX = 0, maxY = 0;
+for (const child of container.children) {
+  const right = child.x + child.width;
+  const bottom = child.y + child.height;
+  if (right > maxX) maxX = right;
+  if (bottom > maxY) maxY = bottom;
+}
+container.resizeWithoutConstraints(maxX + 100, maxY + 100);
+
+return { shifted: mutatedIds.length, mutatedNodeIds: [...new Set(mutatedIds)] };
+```
+
+**Skip this step for Path C** (copy improvement only — no new notes placed, no position changes).
 
 ## Step 5: Validate
 

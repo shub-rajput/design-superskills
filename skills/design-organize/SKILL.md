@@ -44,6 +44,7 @@ Do NOT proceed without it.
    - `loadFontAsync` before any text property changes
    - `layoutSizingHorizontal/Vertical = "FILL"` must be set AFTER `appendChild`
    - Always `return` all created/mutated node IDs
+   - **Page-switch gotcha:** `getNodeById()` works cross-page once a page has been loaded into memory. The `if (figma.getNodeById("<childId>")) break;` preamble in subsequent steps relies on `<childId>` being set from Step 2's discovery loop. If nodes appear to exist but have no accessible properties, re-run the full page discovery from Step 2.
 
 ## Step 1: Parse User Intent
 
@@ -69,18 +70,21 @@ Find the correct page and read the target node's children. **Critical:** the sec
 **Page discovery approach:** Use a single `use_figma` call that iterates all pages, trying to find the section AND access its children. When the section is found on the correct page, its children will be populated.
 
 ```javascript
-// Iterate all pages to find the one where this section has children
+// Iterate all pages to find the one where this section has children.
+// IMPORTANT: getNodeById works cross-page after loading, so checking node
+// existence alone stops on the wrong page. Verify a child's properties
+// are accessible to confirm we're on the correct page.
 for (const page of figma.root.children) {
   await figma.setCurrentPageAsync(page);
   const section = figma.getNodeById("<nodeId>");
   if (section && section.children && section.children.length > 0) {
-    // Found the right page — children are loaded
-    break;
+    const firstChild = section.children[0];
+    if (firstChild && firstChild.width !== undefined) break;
   }
 }
 ```
 
-**Why iterate pages:** Section nodes return `children.length === 0` when accessed from the wrong page. You must switch to the correct page to load content.
+**Why iterate pages:** Section nodes return `children.length === 0` when accessed from the wrong page. You must switch to the correct page to load content. Note: `getNodeById()` returns nodes cross-page once loaded, so the `children` accessibility check is essential.
 
 **Avoid get_metadata for large sections** — it can return 300K+ characters exceeding token limits. Use `use_figma` directly for child classification instead.
 
@@ -372,7 +376,10 @@ for (const child of container.children) {
 screens.sort((a, b) => a.x - b.x || a.y - b.y);
 
 // labelTexts is an array of strings, one per screen (from Mode A or B)
-const labelTexts = screens.map(s => /* screen.name or auto-detected text */);
+// Mode A: use screen names directly. Mode B: use auto-detected labels from Step 6.
+const labelTexts = /* Mode A */ screens.map(s => s.name);
+// OR for Mode B: labelMap is built earlier from get_screenshot analysis
+// const labelTexts = screens.map(s => labelMap.get(s.id) || s.name);
 
 // Match existing labels to screens by x-proximity, then reuse them
 const usedLabels = new Set();

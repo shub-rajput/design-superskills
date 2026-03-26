@@ -1,6 +1,6 @@
 ---
 name: mcp-optimize
-description: Use when creating MCP-optimized versions of Figma design screens for AI consumption. Clones screens, breaks them into lightweight sections based on frame hierarchy, replaces heavy assets with placeholders, and extracts originals into an Assets section. Triggers include requests to optimize for MCP, prepare for dev, make AI-readable, or create dev sections.
+description: Use when creating MCP-optimized versions of Figma design screens for AI consumption. Triggers include requests to optimize for MCP, prepare for dev, make AI-readable, or create dev sections.
 ---
 
 # MCP Optimize
@@ -10,6 +10,8 @@ Clone design screens and create lightweight, AI-readable versions optimized for 
 > **Validation principle:** Every `use_figma` write step must be followed by a `get_screenshot` check. Do not stack writes without visual verification.
 
 > **Assumption:** Designs use auto-layout or at least proper frames. This skill reads the existing frame hierarchy — it does not convert flat designs to auto-layout. Users should ensure their pages are properly structured before invoking this skill.
+
+> **Timeout warning:** Figma MCP timeout errors are **NOT atomic**. A timed-out `use_figma` call may have partially executed — nodes may have been created, cloned, or moved before the timeout. After any timeout, always read back the section's children before retrying or continuing, to detect partial writes. Never assume a timeout means "nothing happened."
 
 ## Quick Reference
 
@@ -21,7 +23,7 @@ Clone design screens and create lightweight, AI-readable versions optimized for 
 | **3** | Version safety |
 | **4** | Clone screens into "MCP Dev Ready" section |
 | **5** | Read frame hierarchy, propose sections, confirm |
-| **6** | Create section frames, replace heavy assets, create Assets section |
+| **6** | Create section frames, export heavy assets as 2x PNG, replace with placeholders |
 | **7** | Resize & validate (get_screenshot) |
 | **8** | Present result |
 
@@ -44,6 +46,7 @@ Do NOT proceed without it.
    - `loadFontAsync` before any text property changes
    - `layoutSizingHorizontal/Vertical = "FILL"` must be set AFTER `appendChild`
    - Always `return` all created/mutated node IDs
+   - **Page-switch gotcha:** `getNodeById()` works cross-page once a page has been loaded into memory. The `if (figma.getNodeById("<childId>")) break;` preamble shown in subsequent steps relies on `<childId>` being set from Step 2's discovery loop (which correctly verifies children are accessible). If you encounter issues where nodes appear to exist but have no accessible properties, re-run the full page discovery from Step 2.
 
 ## Step 1: Parse User Intent
 
@@ -56,10 +59,16 @@ No ambiguity questions needed — if this skill is invoked, the user wants MCP o
 Same page-discovery approach as design-organize. Iterate all pages to find the section, classify children to identify screens (skip labels and notes).
 
 ```javascript
+// Page discovery: getNodeById works cross-page after loading, so checking
+// node existence alone stops on the wrong page. Instead, verify we can
+// actually read a child's properties (width) to confirm correct page.
 for (const page of figma.root.children) {
   await figma.setCurrentPageAsync(page);
   const section = figma.getNodeById("<nodeId>");
-  if (section && section.children && section.children.length > 0) break;
+  if (section && section.children && section.children.length > 0) {
+    const firstChild = section.children[0];
+    if (firstChild && firstChild.width !== undefined) break;
+  }
 }
 
 const container = figma.getNodeById("<nodeId>");
@@ -105,10 +114,16 @@ for (const page of figma.root.children) {
 
 const container = figma.getNodeById("<nodeId>");
 
-// Create the MCP section
-const mcpSection = figma.createSection();
-mcpSection.name = "MCP Dev Ready";
-container.appendChild(mcpSection);
+// Idempotency: check if MCP section already exists (from a previous
+// partial run or timed-out attempt). Reuse it instead of creating a duplicate.
+let mcpSection = container.children.find(
+  c => c.type === "SECTION" && c.name === "MCP Dev Ready"
+);
+if (!mcpSection) {
+  mcpSection = figma.createSection();
+  mcpSection.name = "MCP Dev Ready";
+  container.appendChild(mcpSection);
+}
 
 // Collect screens
 const screens = container.children
@@ -198,7 +213,7 @@ Present the breakdown for each screen and ask for confirmation:
 
 For 10+ screens, offer a "confirm all" shortcut to avoid tedious per-screen confirmation.
 
-## Step 6: Create Section Frames, Replace Heavy Assets, Build Assets Section
+## Step 6: Create Section Frames, Export Heavy Assets, Replace with Placeholders
 
 ### 6a: Create section frames
 
@@ -229,26 +244,46 @@ for (const proposal of confirmedProposals) {
     frame.appendChild(child);
     child.x = 0;
     child.y = 0;
+
+    // Sub-section fill: slight gray to create visual separation
+    frame.fills = [{ type: "SOLID", color: { r: 0.93, g: 0.93, b: 0.93 } }];
   }
 
   // Remove the now-empty clone frame
   clone.remove();
 }
 
-return { sectionsCreated: /* count */ };
+return { sectionsCreated: confirmedProposals.reduce((acc, p) => acc + p.sections.length, 0) };
 ```
 
 ### 6b: Identify heavy assets
+
+**Important:** The `isHeavyAsset` helper below must be defined in the same `use_figma` call as Step 6c's scan loop — it's referenced there. Include it at the top of that script.
 
 Scan all section frames for heavy assets using these heuristics:
 
 ```javascript
 function isHeavyAsset(node) {
-  // Image fills
+  // Image fills — check on FRAME, GROUP, RECTANGLE, VECTOR, and INSTANCE types
+  // (Plugin API may not expose fills on deeply nested instances; check explicitly)
   if (node.fills && Array.isArray(node.fills)) {
     for (const fill of node.fills) {
       if (fill.type === "IMAGE") return true;
     }
+  }
+
+  // Name-based heuristic: nodes with common image/illustration names
+  const nameLower = (node.name || "").toLowerCase();
+  const imagePatterns = ["image", "photo", "illustration", "img", "icon", "logo", "avatar", "thumbnail"];
+  if (imagePatterns.some(p => nameLower.includes(p)) &&
+      node.width > 100 && node.height > 100) return true;
+
+  // Export settings heuristic: nodes configured for image export
+  if (node.exportSettings && node.exportSettings.length > 0) {
+    const hasImageExport = node.exportSettings.some(s =>
+      ["PNG", "JPG", "SVG"].includes(s.format)
+    );
+    if (hasImageExport && node.width > 100) return true;
   }
 
   // Vector groups: >20 direct vector/boolean children, no auto-layout
@@ -284,87 +319,148 @@ function isHeavyAsset(node) {
 }
 ```
 
-### 6c: Replace with placeholders and build Assets section
+### 6c: Export heavy assets as 2x PNG, replace with descriptive placeholders
+
+Instead of keeping heavy assets in Figma (which defeats MCP optimization), **export them as 2x PNG files** to a local folder. The designer can share this folder with devs directly.
+
+**First, collect all heavy asset node IDs** via `use_figma`:
 
 ```javascript
-// Create Assets section as sibling to MCP section
-const container = figma.getNodeById("<parentSectionId>");
-const assetsSection = figma.createSection();
-assetsSection.name = "Assets";
-container.appendChild(assetsSection);
+// Switch page first
+for (const page of figma.root.children) {
+  await figma.setCurrentPageAsync(page);
+  if (figma.getNodeById("<childId>")) break;
+}
 
 await figma.loadFontAsync({ family: "Inter", style: "Regular" });
+await figma.loadFontAsync({ family: "Inter", style: "SemiBold" });
 
-const assetPadding = 100;
-const assetGap = 50;
-let assetX = assetPadding;
-let maxAssetHeight = 0;
-const replacedIds = [];
-
-// Walk all section frames in MCP section to find heavy assets
 const mcpSection = figma.getNodeById("<mcpSectionId>");
+
+// Deduplication: same-named assets across screens only need one export
+const extractedAssetNames = new Map(); // name → { nodeId, width, height }
+const replacements = []; // { nodeId, origName, origWidth, origHeight, origX, origY, parentId, index }
+
 for (const frame of mcpSection.children) {
   if (frame.type !== "FRAME") continue;
 
-  function findAndReplace(parent) {
-    // Iterate children in reverse to safely modify during iteration
+  function findHeavyAssets(parent) {
     const children = [...parent.children];
     for (const child of children) {
       if (isHeavyAsset(child)) {
-        const origWidth = child.width;
-        const origHeight = child.height;
-        const origX = child.x;
-        const origY = child.y;
         const origName = child.name;
         const origParent = child.parent;
         const origIndex = [...origParent.children].indexOf(child);
 
-        // Move original to Assets section
-        assetsSection.appendChild(child);
-        child.x = assetX;
-        child.y = assetPadding;
-        assetX += child.width + assetGap;
-        if (child.height > maxAssetHeight) maxAssetHeight = child.height;
+        if (!extractedAssetNames.has(origName)) {
+          // First occurrence — mark for export, add 2x export setting
+          child.exportSettings = [{ format: "PNG", suffix: "@2x", constraint: { type: "SCALE", value: 2 } }];
+          extractedAssetNames.set(origName, {
+            nodeId: child.id, width: child.width, height: child.height
+          });
+        }
 
-        // Create placeholder frame (not rectangle — needs text child)
-        const placeholder = figma.createFrame();
-        placeholder.name = "placeholder: " + origName;
-        placeholder.resize(origWidth, origHeight);
-        placeholder.fills = [{ type: "SOLID", color: { r: 0.9, g: 0.9, b: 0.9 } }];
-        placeholder.cornerRadius = 8;
-
-        // Add label text
-        const label = figma.createText();
-        label.fontName = { family: "Inter", style: "Regular" };
-        label.fontSize = 14;
-        label.characters = origName;
-        label.fills = [{ type: "SOLID", color: { r: 0.5, g: 0.5, b: 0.5 } }];
-        placeholder.appendChild(label);
-        label.x = 12;
-        label.y = 12;
-
-        // Insert placeholder at original position
-        origParent.insertChild(origIndex, placeholder);
-        placeholder.x = origX;
-        placeholder.y = origY;
-
-        replacedIds.push({ original: child.id, placeholder: placeholder.id });
+        replacements.push({
+          nodeId: child.id, origName, isDuplicate: extractedAssetNames.get(origName).nodeId !== child.id,
+          origWidth: child.width, origHeight: child.height,
+          origX: child.x, origY: child.y,
+          parentId: origParent.id, index: origIndex
+        });
       } else if (child.children) {
-        findAndReplace(child);
+        findHeavyAssets(child);
       }
     }
   }
 
-  findAndReplace(frame);
+  findHeavyAssets(frame);
 }
 
-// Resize Assets section
-assetsSection.resizeWithoutConstraints(
-  assetX + assetPadding,
-  assetPadding + maxAssetHeight + assetPadding
-);
+return { replacements, uniqueAssets: [...extractedAssetNames.entries()].map(([name, info]) => ({ name, ...info })) };
+```
 
-return { assetsExtracted: replacedIds.length, replacedIds };
+**Then, export each unique asset** using `get_screenshot` (which exports node content as an image). For each unique asset:
+
+```bash
+# Create assets folder next to the working directory
+mkdir -p <output-dir>/assets
+
+# Use get_screenshot on each unique asset node ID to export it
+# Save as <asset-name>@2x.png
+```
+
+> **Note:** If `get_screenshot` is insufficient for export quality, instruct the user: "I've tagged X assets with 2x PNG export settings in Figma. Select them and use File → Export to save to your assets folder."
+
+**Finally, replace originals with descriptive placeholders** via `use_figma`:
+
+```javascript
+// Switch page first
+for (const page of figma.root.children) {
+  await figma.setCurrentPageAsync(page);
+  if (figma.getNodeById("<childId>")) break;
+}
+
+await figma.loadFontAsync({ family: "Inter", style: "Regular" });
+await figma.loadFontAsync({ family: "Inter", style: "SemiBold" });
+
+const replacedIds = [];
+
+for (const r of replacements) {
+  const node = figma.getNodeById(r.nodeId);
+  const parent = figma.getNodeById(r.parentId);
+  if (!node || !parent) continue;
+
+  // Remove the heavy asset
+  node.remove();
+
+  // Create descriptive placeholder
+  const placeholder = figma.createFrame();
+  placeholder.name = "placeholder: " + r.origName;
+  placeholder.resize(r.origWidth, r.origHeight);
+  placeholder.fills = [{ type: "SOLID", color: { r: 0.95, g: 0.95, b: 0.97 } }];
+  placeholder.strokes = [{ type: "SOLID", color: { r: 0.8, g: 0.8, b: 0.85 } }];
+  placeholder.strokeWeight = 1;
+  placeholder.strokeDashes = [8, 4];
+  placeholder.cornerRadius = 8;
+  placeholder.layoutMode = "VERTICAL";
+  placeholder.primaryAxisAlignItems = "CENTER";
+  placeholder.counterAxisAlignItems = "CENTER";
+  placeholder.primaryAxisSizingMode = "FIXED";
+  placeholder.counterAxisSizingMode = "FIXED";
+  placeholder.itemSpacing = 8;
+
+  // Asset name label (bold)
+  const nameLabel = figma.createText();
+  nameLabel.fontName = { family: "Inter", style: "SemiBold" };
+  nameLabel.fontSize = 14;
+  nameLabel.characters = r.origName;
+  nameLabel.fills = [{ type: "SOLID", color: { r: 0.3, g: 0.3, b: 0.4 } }];
+  placeholder.appendChild(nameLabel);
+
+  // Size info
+  const sizeLabel = figma.createText();
+  sizeLabel.fontName = { family: "Inter", style: "Regular" };
+  sizeLabel.fontSize = 12;
+  sizeLabel.characters = Math.round(r.origWidth) + " × " + Math.round(r.origHeight) + (r.isDuplicate ? " (duplicate)" : "");
+  sizeLabel.fills = [{ type: "SOLID", color: { r: 0.5, g: 0.5, b: 0.55 } }];
+  placeholder.appendChild(sizeLabel);
+
+  // File reference
+  const fileLabel = figma.createText();
+  fileLabel.fontName = { family: "Inter", style: "Regular" };
+  fileLabel.fontSize = 11;
+  fileLabel.characters = "→ assets/" + r.origName + "@2x.png";
+  fileLabel.fills = [{ type: "SOLID", color: { r: 0.5, g: 0.5, b: 0.55 } }];
+  placeholder.appendChild(fileLabel);
+
+  // Insert at original position
+  parent.insertChild(Math.min(r.index, parent.children.length), placeholder);
+  placeholder.x = r.origX;
+  placeholder.y = r.origY;
+
+  replacedIds.push(placeholder.id);
+}
+
+return { replaced: replacedIds.length, mutatedNodeIds: replacedIds };
 ```
 
 ## Step 7: Resize & Validate
@@ -402,9 +498,9 @@ return { resized: true };
 
 Call `get_screenshot` on the parent section. Verify:
 - "MCP Dev Ready" section contains named section frames
-- Placeholders are visible with labels (gray boxes)
-- "Assets" section contains extracted originals
+- Placeholders are visible with asset name, dimensions, and file reference (dashed border boxes)
 - No overlapping or clipped elements
+- Placeholder sizes match the original asset dimensions
 
 Fix any issues before presenting.
 
@@ -412,10 +508,13 @@ Fix any issues before presenting.
 
 Show the user a before/after screenshot and summarize:
 
-> **Done.** Created MCP-optimized version with X sections and Y assets extracted.
+> **Done.** Created MCP-optimized version with X sections. Y assets exported as 2x PNG.
 >
 > - **Original screens:** untouched
-> - **MCP Dev Ready:** lightweight section frames, heavy assets replaced with labeled placeholders
-> - **Assets:** original illustrations and images for dev reference
+> - **MCP Dev Ready:** lightweight section frames, heavy assets replaced with descriptive placeholders
+> - **Assets folder:** `<output-dir>/assets/` — contains Y exported PNGs at 2x resolution
+> - **Placeholders:** show asset name, dimensions, and file path reference
+>
+> Designer can share the assets folder with devs directly.
 >
 > Want to adjust anything?
