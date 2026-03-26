@@ -1,11 +1,11 @@
 ---
-name: figma-organize
-description: Use when organizing Figma design screens into labeled, spaced layouts with optional dev notes and sub-sections. Triggers include requests to organize screens, arrange frames, clean up a section, add labels, group screens, or re-format a layout.
+name: design-organize
+description: Use when organizing Figma design screens into labeled, spaced layouts with optional sub-sections. Triggers include requests to organize screens, arrange frames, clean up a section, add labels, group screens, or re-format a layout.
 ---
 
-# Figma Organize
+# Design Organize
 
-Organize scattered design screens inside a Figma section or frame into a clean, labeled layout with optional dev notes and sub-section grouping. Works on any node type — frames, groups, images, shapes, vectors. Handles both fresh organization and re-formatting existing layouts.
+Organize scattered design screens inside a Figma section or frame into a clean, labeled layout with optional sub-section grouping. Works on any node type — frames, groups, images, shapes, vectors. Handles both fresh organization and re-formatting existing layouts.
 
 > **Validation principle:** Every `use_figma` write step must be followed by a `get_screenshot` check. Do not stack writes without visual verification. If a screenshot reveals a problem, fix it before proceeding.
 
@@ -21,10 +21,9 @@ Organize scattered design screens inside a Figma section or frame into a clean, 
 | **5** | Validate arrangement (get_screenshot) |
 | **6** | Add/reposition labels |
 | **7** | Validate labels (get_screenshot) |
-| **8** | Add dev notes (if requested) |
-| **9** | Resize section(s) to fit content |
-| **10** | Final validation (get_screenshot) |
-| **11** | Present result, offer adjustments |
+| **8** | Resize section(s) to fit content |
+| **9** | Final validation (get_screenshot) |
+| **10** | Present result, offer adjustments |
 
 ## Step 0: Prerequisites
 
@@ -52,20 +51,14 @@ The user has already provided a Figma link to a section or frame. Extract `fileK
 
 **Parse inline preferences first.** Check if the user's message already answers any of these:
 - Labels preference (e.g., "no labels", "auto-label", "label these screens")
-- Dev notes preference (e.g., "no dev notes", "add Developer Note component")
 - Grouping preference (e.g., "group by feature", "keep flat")
 
-**Only ask about unresolved choices.** If the user said "organize this, no dev notes" — don't ask about dev notes. Combine remaining questions into one `AskUserQuestion`:
+**Only ask about unresolved choices.** Combine remaining questions into one `AskUserQuestion`:
 
 > **Labels:**
 > - A) Use element names (default, fast)
 > - B) Auto-detect from content (I'll screenshot each element and generate descriptive labels — great for screenshot dumps with meaningless filenames)
 > - C) No labels
->
-> **Dev notes:**
-> - A) Yes — what's the component name? (e.g., "Developer Note")
-> - B) Yes — use a default note template
-> - C) No
 
 Skip questions the user already answered inline.
 
@@ -184,12 +177,9 @@ Then in Step 6:
 |---------|---------|
 | Section padding | 100px |
 | Label-to-screen gap | 70px |
-| Screen-to-note gap | 50px |
-| Note-to-next-screen gap | 200px |
-| Screen-to-screen gap (no notes) | 200px |
+| Screen-to-screen gap | 200px |
 | Label font | Inter Medium, 70pt |
 | Label color | White `{r:1, g:1, b:1}` |
-| Default note width | 400px |
 
 ### Flat layout (default)
 
@@ -227,12 +217,8 @@ tempLabel.remove();
 const padding = 100;
 const labelGap = 70;
 // labelsEnabled = true if user chose A or B for labels in Step 1
-// notesEnabled = true if user chose A or B for dev notes in Step 1
 const startY = <labelsEnabled> ? padding + labelHeight + labelGap : padding;
 
-const screenToNoteGap = 50;
-const noteWidth = 400;
-const noteToNextGap = 200;
 const screenToScreenGap = 200;
 
 let currentX = padding;
@@ -240,11 +226,7 @@ let currentX = padding;
 for (const screen of screens) {
   screen.x = currentX;
   screen.y = startY;
-  if (<notesEnabled>) {
-    currentX += screen.width + screenToNoteGap + noteWidth + noteToNextGap;
-  } else {
-    currentX += screen.width + screenToScreenGap;
-  }
+  currentX += screen.width + screenToScreenGap;
 }
 
 return { arranged: screens.length, mutatedNodeIds: screens.map(s => s.id) };
@@ -474,135 +456,9 @@ Call `get_screenshot` on the section. Verify:
 - Label text is readable
 - Label spacing is consistent
 
-Fix any issues before proceeding to dev notes.
+Fix any issues before proceeding.
 
-## Step 8: Add Dev Notes (if requested)
-
-### Path A: User-provided component
-
-1. Call `search_design_system` with the component name the user provided
-2. Check `assetType` in results:
-   - `component` → `await figma.importComponentByKeyAsync(componentKey)`
-   - `component_set` → `await figma.importComponentSetByKeyAsync(componentKey)`, pick default variant (first child)
-3. For each screen: `createInstance()`, position at `screen.x + screen.width + 50`, `screen.y`
-4. Append to container
-5. Return all instance IDs
-
-If `search_design_system` returns no results, inform the user and offer the default template instead.
-
-```javascript
-// Switch page first
-for (const page of figma.root.children) {
-  await figma.setCurrentPageAsync(page);
-  if (figma.getNodeById("<childId>")) break;
-}
-
-const container = figma.getNodeById("<nodeId>");
-
-// Import component (adjust based on assetType)
-const component = await figma.importComponentByKeyAsync("<componentKey>");
-// OR for component_set:
-// const componentSet = await figma.importComponentSetByKeyAsync("<componentKey>");
-// const component = componentSet.children[0]; // default variant
-
-const screens = container.children
-  .filter(c => { /* same screen filter */ })
-  .sort((a, b) => a.x - b.x || a.y - b.y);
-
-const createdIds = [];
-
-for (const screen of screens) {
-  const instance = component.createInstance();
-  container.appendChild(instance);
-  instance.x = screen.x + screen.width + 50;
-  instance.y = screen.y;
-  createdIds.push(instance.id);
-}
-
-return { notesCreated: createdIds.length, createdNodeIds: createdIds };
-```
-
-### Path B: Default note template
-
-**This entire block must run in a single `use_figma` call** since the template reference only exists within that execution context:
-
-```javascript
-// Switch page, load fonts
-for (const page of figma.root.children) {
-  await figma.setCurrentPageAsync(page);
-  if (figma.getNodeById("<childId>")) break;
-}
-
-await figma.loadFontAsync({ family: "Inter", style: "SemiBold" });
-await figma.loadFontAsync({ family: "Inter", style: "Regular" });
-
-const container = figma.getNodeById("<nodeId>");
-
-// Create template note
-const note = figma.createFrame();
-note.name = "Dev Note";
-note.resize(400, 1);
-note.layoutMode = "VERTICAL";
-note.paddingTop = 24; note.paddingBottom = 24;
-note.paddingLeft = 24; note.paddingRight = 24;
-note.itemSpacing = 16;
-note.primaryAxisSizingMode = "AUTO";
-note.counterAxisSizingMode = "FIXED";
-note.cornerRadius = 12;
-note.fills = [{ type: "SOLID", color: { r: 1, g: 0.98, b: 0.94 } }];
-note.strokes = [{ type: "SOLID", color: { r: 0.85, g: 0.85, b: 0.85 } }];
-note.strokeWeight = 1;
-
-const title = figma.createText();
-title.fontName = { family: "Inter", style: "SemiBold" };
-title.fontSize = 20;
-title.characters = "Dev Note";
-title.fills = [{ type: "SOLID", color: { r: 0.1, g: 0.1, b: 0.1 } }];
-note.appendChild(title);
-title.layoutSizingHorizontal = "FILL"; // MUST be AFTER appendChild
-
-const body = figma.createText();
-body.fontName = { family: "Inter", style: "Regular" };
-body.fontSize = 14;
-body.characters = "Add development notes here...";
-body.fills = [{ type: "SOLID", color: { r: 0.4, g: 0.4, b: 0.4 } }];
-note.appendChild(body);
-body.layoutSizingHorizontal = "FILL"; // MUST be AFTER appendChild
-
-// Position the template note off-screen temporarily
-container.appendChild(note);
-note.x = -1000;
-note.y = -1000;
-
-// Clone for each screen
-const screens = container.children
-  .filter(c => {
-    if (c.visible === false) return false;
-    if (c.type === "TEXT") return false;
-    if (c === note) return false; // skip the template
-    if (c.type === "INSTANCE" && c.width <= 450) return false;
-    if (c.type === "FRAME" && c.name === "Dev Note" && c.width <= 450) return false;
-    return true;
-  })
-  .sort((a, b) => a.x - b.x || a.y - b.y);
-
-const createdIds = [];
-
-for (const screen of screens) {
-  const clone = note.clone();
-  container.appendChild(clone);
-  clone.x = screen.x + screen.width + 50;
-  clone.y = screen.y;
-  createdIds.push(clone.id);
-}
-
-// Remove the template
-note.remove();
-
-return { notesCreated: createdIds.length, createdNodeIds: createdIds };
-```
-
-## Step 9: Resize Section(s) to Fit Content
+## Step 8: Resize Section(s) to Fit Content
 
 Calculate content bounds and resize. If sub-sections were created, resize each sub-section first, then the parent.
 
@@ -639,27 +495,28 @@ resizeToFit(parent);
 return { resized: true };
 ```
 
-## Step 10: Final Validation
+## Step 9: Final Validation
 
 Call `get_screenshot` on the full section/frame. Verify:
 - Screens aligned within each section/sub-section
 - Labels positioned above each screen with consistent gap
-- Dev notes (if added) positioned to the right of each screen
 - Sub-sections properly stacked and styled
 - No overlapping or clipped elements
 - All sections properly sized
 
 Fix any issues before showing the user.
 
-## Step 11: Present Result
+## Step 10: Present Result
 
 Show the user the final screenshot and summarize:
 
-> **Done.** Organized X screens into Y section(s) with labels and dev notes.
+> **Done.** Organized X screens into Y section(s) with labels.
 >
 > **Spacing defaults used:**
-> - Label gap: 70px | Screen-to-note: 50px | Note-to-next: 200px | Padding: 100px
+> - Label gap: 70px | Screen gap: 200px | Padding: 100px
 >
 > Want to adjust spacing, grouping, or layout direction?
+>
+> **Next steps:** Want to add dev notes or optimize for MCP? (I can invoke design-annotations or mcp-optimize)
 
 If the user requests changes, re-run the relevant steps with updated values.
