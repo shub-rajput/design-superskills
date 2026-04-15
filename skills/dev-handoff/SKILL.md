@@ -228,6 +228,8 @@ If no, done. If yes, check for `FIGMA_TOKEN`:
 
 If the user provided an Asana/PM link in Step 1, offer to update it with the GitHub issue links and a summary. If Asana MCP tools are available, use them. Otherwise, output the update text for the user to paste manually.
 
+Also ask: "Would you like me to create a review subtask in Asana for reviewing the designs and GitHub issues?" If yes, create a subtask on the parent task with a summary of what was created and links to the GitHub issues and Figma section.
+
 ## Common Mistakes
 
 | Mistake | Fix |
