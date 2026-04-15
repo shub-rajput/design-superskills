@@ -28,8 +28,8 @@ Turn Figma design sections into GitHub issues for developer handoff. Reads the F
 | **3** | Screenshot frames + read dev notes | Individual frames, not sections |
 | **4** | Organize into issues | Group by section, detect issue type |
 | **5** | Ask clarifying questions | Before creating any issues |
-| **6** | Export frame screenshots (optional) | Via Figma REST API if FIGMA_TOKEN is set |
-| **7** | Create GitHub issues | With Figma links, and embedded screenshots if available |
+| **6** | Create GitHub issues | With Figma links |
+| **7** | Add screenshots (optional) | Export, user drag-drops, then label via edit |
 | **8** | Update PM tool (optional) | Update Asana/PM task with issue links if provided |
 
 ## Step 0: Prerequisites
@@ -150,55 +150,50 @@ Ask about:
 
 Iterate on the plan until the user approves.
 
-## Step 6: Export Frame Screenshots (Optional)
-
-This step is **optional** — it requires a `FIGMA_TOKEN` environment variable set with a Figma Personal Access Token. Check for it at the start of this step.
-
-**If `FIGMA_TOKEN` is NOT set:**
-- Skip this step entirely — no error, no warning beyond a brief note
-- Issues will use Figma links in the Screenshots section instead of embedded images
-- The skill works fully without it
-
-**If `FIGMA_TOKEN` IS set:**
-
-Ask the user: "FIGMA_TOKEN is available — would you like embedded screenshots in the issues, or just Figma links?" Only proceed with export if they want embedded screenshots.
-
-Use the Figma REST API to export frame PNGs for embedding in GitHub issues.
-
-```bash
-# Batch export all frames at once (comma-separated node IDs)
-curl -s "https://api.figma.com/v1/images/<fileKey>?ids=<node1>,<node2>,...&format=png&scale=2" \
-  -H "X-Figma-Token: <token>"
-```
-
-This returns temporary S3 URLs for each frame. Embed the URLs directly in the GitHub issue body as markdown images. GitHub caches them via their camo proxy.
-
-## Step 7: Create GitHub Issues
+## Step 6: Create GitHub Issues
 
 ### If gh CLI is available:
 
-Use `gh issue create` to create each issue on the target repo.
-
-1. Build the full issue body with all sections, dev notes, and screenshots
-2. Create with `gh issue create --repo <repo> --title "<title>" --body "$(cat <<'EOF' ... EOF)"`
-3. Report all created issue URLs in a summary table:
-
-```
-| # | Issue | Link |
-|---|-------|------|
-| 1 | Title | #NNN |
-| 2 | Title | #NNN |
-```
+1. Create each issue with `gh issue create --repo <repo> --title "<title>" --body "$(cat <<'EOF' ... EOF)"`. Use HEREDOC to preserve markdown formatting.
+2. Include Figma subsection links in the header table and Asana/PM link if provided.
+3. Report all created issue URLs in a summary table.
 
 ### If gh CLI is NOT available (markdown output mode):
 
 Write markdown files as described in Step 0.
 
-### Formatting rules (both modes):
-- Use HEREDOC for body to preserve markdown formatting
-- Embed screenshots as `![Label](url)` under `## Screenshots` with `### State Name` subheadings
-- Include Figma subsection links in the header table
-- Always include the Asana/project management link if provided
+## Step 7: Add Screenshots (Optional)
+
+After issues are created, ask: "Would you like to add screenshots to the issues?"
+
+If no, done. If yes, check for `FIGMA_TOKEN`:
+- **Not set:** Tell the user they need a Figma Personal Access Token. Skip screenshots.
+- **Set:** Proceed below.
+
+### Screenshot flow (one issue at a time):
+
+1. **Export via Figma REST API** — batch all frames:
+   ```bash
+   curl -s "https://api.figma.com/v1/images/<fileKey>?ids=<node1>,<node2>,...&format=png&scale=2" \
+     -H "X-Figma-Token: <token>"
+   ```
+
+2. **Download PNGs** to `./dev-handoff-issues/screenshots/`, organized per issue:
+   ```
+   screenshots/
+     01-layout/
+       disabled-state.png
+       gmaps-not-connected.png
+     02-zapier/
+       not-connected.png
+       connected.png
+   ```
+
+3. **For each issue:**
+   - Open the screenshot folder: `open ./dev-handoff-issues/screenshots/01-layout/`
+   - Tell the user: "Drag-drop these images into [issue link] and save."
+   - Wait for the user to say done.
+   - Fetch the updated body with `gh issue view`, then `gh issue edit --body-file` to label each screenshot under `### State Name` subheadings in the `## Screenshots` section.
 
 ## Step 8: Update Project Management Tool (Optional)
 
@@ -216,5 +211,4 @@ If the user provided an Asana/PM link in Step 1, offer to update it with the Git
 
 ## Notes
 
-- **Figma export URLs are temporary** — ~14 days, but GitHub caches via camo proxy. If permanent hosting is needed later, commit to `.github/design-assets/` in the repo.
 - **Cross-reference related issues** — if the user mentions something is handled in a separate issue, link to it.
