@@ -32,6 +32,21 @@ Turn Figma design sections into GitHub issues for developer handoff. Reads the F
 | **7** | Add screenshots (optional) | Export, user drag-drops, then label via edit |
 | **8** | Update PM tool (optional) | Update Asana/PM task with issue links if provided |
 
+## BEFORE YOU START: Create Tasks
+
+**Use TaskCreate to create a task for each step.** Mark each as `in_progress` when starting and `completed` when done. This prevents skipping steps.
+
+Tasks to create:
+1. "Step 0: Check prerequisites"
+2. "Step 1: Gather user input"
+3. "Step 2: Read Figma structure"
+4. "Step 3: Screenshot frames + read dev notes"
+5. "Step 4: Organize into issues"
+6. "Step 5: Ask clarifying questions — get user approval"
+7. "Step 6: Create GitHub issues"
+8. "Step 7: Add screenshots (optional)"
+9. "Step 8: Update PM tool (optional)"
+
 ## Step 0: Prerequisites
 
 Check before gathering input:
@@ -63,7 +78,9 @@ Ask the user which they prefer:
 
 ## Step 1: Gather User Input
 
-Ask the user directly in conversation — **do NOT use AskUserQuestion tool** for this. Have a natural back-and-forth to collect:
+Ask the user directly in conversation — **do NOT use AskUserQuestion tool** for this.
+
+**Pacing:** Start with the 3 required fields. Then ask optional questions as follow-ups — don't dump everything at once.
 
 **Required — ask for each explicitly, never guess or assume:**
 - **Figma URL** — link to the parent section/page containing all design screens
@@ -132,23 +149,33 @@ Always link to the **specific subsection** in Figma, not the parent section. Con
 
 ## Step 5: Ask Clarifying Questions
 
-**Before creating any issues**, present the planned issue structure and ask clarifying questions. This is critical — don't skip this step.
+<HARD-GATE>
+**You MUST get explicit user approval before proceeding to Step 6.** Do not create any issues until the user says the plan looks good. If you catch yourself about to run `gh issue create` without having asked questions and received approval — STOP.
+</HARD-GATE>
 
-**Ask questions as natural conversation, NOT via AskUserQuestion tool.** The tool forces rigid multiple-choice options that prevent nuance and follow-up. Instead, write your questions directly in your response so the user can answer freely and you can have a back-and-forth.
+**Ask questions as natural conversation, NOT via AskUserQuestion tool.**
 
-Show the user:
-1. How many issues you plan to create
-2. The title and type of each issue
-3. Which sections/screens map to which issue
-4. Any ambiguities in the dev notes
+### Part A: Present the plan in template format
 
-Ask about:
-- Anything unclear in the dev notes
-- Whether the issue grouping makes sense
-- Any missing context or dependencies between issues
-- Whether any issues should be combined or split differently
+Show each planned issue **using the exact template format from Step 4** — same headers, same structure. The preview should look identical to what will be created. Include:
+- How many issues
+- Title and type of each
+- Which screens map to which issue
 
-Iterate on the plan until the user approves.
+### Part B: Flag ambiguities
+
+Scan the dev notes for these specific red flags and ask about each:
+- **"Consult X" / "Check with X"** references — who decides?
+- **"Placeholder" / "WIP" / "TBD"** labels — include or skip?
+- **Open decisions** — e.g., provider choices, credit allotments, scope boundaries
+- **Missing edge cases** — error states mentioned but not designed, empty states not shown
+- **Dependencies between issues** — does one block another?
+
+### Part C: Get approval
+
+Ask: "Does this plan look good, or would you like to adjust anything?"
+
+Iterate until the user approves. Only then proceed to Step 6.
 
 ## Step 6: Create GitHub Issues
 
@@ -157,6 +184,8 @@ Iterate on the plan until the user approves.
 1. Create each issue with `gh issue create --repo <repo> --title "<title>" --body "$(cat <<'EOF' ... EOF)"`. Use HEREDOC to preserve markdown formatting.
 2. Include Figma subsection links in the header table and Asana/PM link if provided.
 3. Report all created issue URLs in a summary table.
+
+**After each issue is created**, fetch it with `gh issue view` and verify the body rendered correctly (tables, links, formatting). Fix any issues with `gh issue edit --body-file`.
 
 ### If gh CLI is NOT available (markdown output mode):
 
