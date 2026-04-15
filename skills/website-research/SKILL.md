@@ -132,30 +132,51 @@ After navigating, **follow `shared/common-steps.md` → "Screenshot Capture Stra
 
 See `shared/common-steps.md` → "agent-browser Click Syntax" for ref syntax rules.
 
-### Handle Common Interruptions
+### Auto-Dismiss Popups & Overlays
 
-Dismiss these BEFORE taking the screenshot:
+Before every screenshot, run this eval to automatically detect and remove consent banners, newsletter popups, chat widgets, and other overlays the user did NOT ask to capture:
 
-| Interruption | Solution |
-|-------------|----------|
-| Cookie consent banner | Use `snapshot -i` to find accept/dismiss button, click by `[ref=XX]` |
-| Newsletter popup | Find close/dismiss button via `snapshot -i`, click by `[ref=XX]` |
-| Chat widget overlay | Find close button via `snapshot -i`, click by `[ref=XX]` |
-| Age gate / GDPR modal | Find accept/confirm button via `snapshot -i`, click by `[ref=XX]` |
-| Sticky notification bar | Find close button or use `eval` to hide: `agent-browser --session <session> eval "document.querySelector('[class*=notification], [class*=banner]')?.remove()"` |
+```bash
+agent-browser --session <session> eval "(function(){var sels=['[class*=consent]','[class*=cookie]','[id*=cookie]','[class*=gdpr]','[id*=gdpr]','[class*=popup]','[class*=modal]:not([class*=nav])','[class*=overlay]:not([class*=nav])','[class*=newsletter]','[class*=subscribe]','[id*=newsletter]','[class*=chat-widget]','[class*=chat-bubble]','[id*=intercom]','[id*=drift]','[id*=hubspot-messages]','[class*=notification-bar]','[class*=sticky-bar]','[class*=announcement]','[id*=onetrust]','[id*=sp_message]','[id*=CybotCookiebot]','[class*=cc-window]','[id*=truste]','[class*=evidon]'];var removed=[];sels.forEach(function(s){document.querySelectorAll(s).forEach(function(el){if(el.offsetHeight>0&&getComputedStyle(el).position!=='static'){removed.push(s);el.remove()}})});document.querySelectorAll('body > div').forEach(function(el){var st=getComputedStyle(el);if((st.position==='fixed'||st.position==='sticky')&&el.offsetHeight<300&&el.offsetHeight>0){removed.push('fixed-bar');el.remove()}});document.body.style.overflow='auto';document.documentElement.style.overflow='auto';return 'Removed: '+removed.length+' elements'})()"
+```
 
-**Cookie banners that reappear after dismiss:** Use `eval` to set the consent cookie directly:
+This script:
+1. Targets common consent/cookie/GDPR banner selectors (OneTrust, CookieBot, TrustArc, Evidon, generic patterns)
+2. Targets popup/modal/overlay elements (excluding navigation-related ones)
+3. Targets chat widgets (Intercom, Drift, HubSpot, generic)
+4. Targets newsletter/subscribe overlays and sticky notification bars
+5. Removes any small fixed/sticky bars on `<body>` (likely banners, not page content)
+6. Restores scroll on `<body>` and `<html>` (many consent overlays lock scrolling)
+7. Only removes elements that are visible (`offsetHeight > 0`) and positioned (not `static`), avoiding false positives on hidden template elements
+
+**Run this once after page load, before the scroll-to-trigger-lazy-images step.** If you see popups reappearing after navigation to a new page, run it again.
+
+**First-screenshot verification:** After capturing the FIRST screenshot of each site, `Read` the PNG immediately and check for any visible popups, banners, or overlays. If you see one that the auto-dismiss script missed, dismiss it manually (see fallback below), re-run the auto-dismiss script, and retake the screenshot. Only proceed with the remaining pages once the first screenshot is confirmed clean. This prevents discovering popups only at gallery review time.
+
+**If the auto-dismiss script misses a popup:** Fall back to manual dismissal — use `snapshot -i` to identify the element, then either click its close/accept button by `[ref=XX]` or remove it with a targeted `eval`.
+
+**Cookie banners that reappear after dismiss:** Some banners reappear on every page because the consent cookie wasn't set. Use `eval` to set it directly:
 ```bash
 agent-browser --session <session> eval "document.cookie = 'cookie_consent=accepted; path=/; max-age=86400'"
 ```
-Then reload the page.
+Then reload the page. For known consent platforms:
+```bash
+# OneTrust
+agent-browser --session <session> eval "document.cookie = 'OptanonAlertBoxClosed='+new Date().toISOString()+'; path=/; max-age=86400'"
+# CookieBot
+agent-browser --session <session> eval "document.cookie = 'CookieConsent={stamp:%27-1%27,necessary:true,preferences:true,statistics:true,marketing:true}; path=/; max-age=86400'"
+```
 
 ### Sites with Anti-Bot Protection
 
-Some sites use Cloudflare, reCAPTCHA, or aggressive anti-bot measures. If agent-browser is blocked:
-1. Note the limitation in the review brief
+Some sites use Cloudflare, reCAPTCHA, Vercel Security Checkpoint, or other anti-bot measures. If agent-browser is blocked:
+1. Note the limitation in the review brief (include which protection was encountered — e.g., "Blocked by Vercel Security Checkpoint")
 2. Screenshot what is accessible (the challenge page itself can be a finding)
 3. Move on to the next site — do not spend time trying to bypass protection
+
+**Known blockers:** Cloudflare challenge pages, reCAPTCHA gates, Vercel Security Checkpoint (increasingly common on Next.js/Vercel-hosted sites), Akamai Bot Manager.
+
+**Wayback Machine fallback:** If a site is blocked by bot protection, try loading it via the Wayback Machine (`web.archive.org/web/<url>`). The archived version bypasses the protection since it's served from archive.org. The content may be slightly outdated, but for design/UX research purposes the layout and visual design are usually still representative. Note in the review brief that screenshots were captured from the Wayback Machine archive.
 
 ### Journey Notes
 
