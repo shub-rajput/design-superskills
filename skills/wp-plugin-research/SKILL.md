@@ -28,6 +28,23 @@ Automate screenshot capture of WordPress plugin UIs, generate annotated HTML gal
 | **9** | Import to Figma | Optional |
 | **10** | Cleanup | Restore plugins, delete temp user, kill server |
 
+## BEFORE YOU START: Create Tasks
+
+**Use TaskCreate to create a task for each step.** Mark each as `in_progress` when starting and `completed` when done. This prevents skipping steps.
+
+Tasks to create:
+1. "Step 0: Permissions check"
+2. "Step 1: Choose environment"
+3. "Step 2: Gather user input"
+4. "Step 3: Clean slate — deactivate plugins"
+5. "Step 4: Login via agent-browser"
+6. "Step 5: Discover pages + filter"
+7. "Step 6: Handle interruptions"
+8. "Step 7: Capture screenshots + review"
+9. "Step 8: Generate HTML gallery"
+10. "Step 9: Import to Figma (optional)"
+11. "Step 10: Cleanup"
+
 ## Step 0: Permissions (DO THIS FIRST — MANDATORY)
 
 **Read `shared/common-steps.md` → "Permissions" and "No Shell Variables in Bash Commands" sections.** Follow those instructions exactly. This skill requires both the core permissions AND the additional wp-plugin-research permissions listed there.

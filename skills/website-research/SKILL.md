@@ -25,6 +25,23 @@ Capture screenshots of public websites, generate annotated HTML galleries, and i
 | **9** | Import to Figma | Optional |
 | **10** | Cleanup | Kill local HTTP server |
 
+## BEFORE YOU START: Create Tasks
+
+**Use TaskCreate to create a task for each step.** Mark each as `in_progress` when starting and `completed` when done. This prevents skipping steps.
+
+Tasks to create:
+1. "Step 0: Permissions check"
+2. "Step 1: Prerequisites"
+3. "Step 2: Gather user input"
+4. "Step 3: Capture screenshots"
+5. "Step 4: Deduplicate screenshots"
+6. "Step 5: Write review brief"
+7. "Step 6: Dispatch marketing-reviewer"
+8. "Step 7: Dispatch marketing-comparator (if multi-site)"
+9. "Step 8: Generate HTML gallery"
+10. "Step 9: Import to Figma (optional)"
+11. "Step 10: Cleanup"
+
 ## Step 0: Permissions (DO THIS FIRST — MANDATORY)
 
 **Read `shared/common-steps.md` → "Permissions" and "No Shell Variables in Bash Commands" sections.** Follow those instructions exactly. No extra permissions needed for this skill.
