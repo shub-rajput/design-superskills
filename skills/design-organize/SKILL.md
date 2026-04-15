@@ -1,6 +1,6 @@
 ---
 name: design-organize
-description: Use when organizing Figma design screens into labeled, spaced layouts with optional sub-sections. Triggers include requests to organize screens, arrange frames, clean up a section, add labels, group screens, or re-format a layout.
+description: Use when organizing, restructuring, or cleaning up Figma design screens — labeled layouts, sub-sections, grouping. Triggers include requests to organize screens, arrange frames, clean up a section, add labels, group screens, re-format a layout, create subsections, move screens between sections, split a section into groups, restructure how screens are grouped, or any request involving a Figma section/frame URL combined with layout or grouping instructions.
 ---
 
 # Design Organize
