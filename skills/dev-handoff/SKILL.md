@@ -30,6 +30,7 @@ Turn Figma design sections into GitHub issues for developer handoff. Reads the F
 | **5** | Ask clarifying questions | Before creating any issues |
 | **6** | Export frame screenshots (optional) | Via Figma REST API if FIGMA_TOKEN is set |
 | **7** | Create GitHub issues | With Figma links, and embedded screenshots if available |
+| **8** | Update PM tool (optional) | Update Asana/PM task with issue links if provided |
 
 ## Step 0: Prerequisites
 
@@ -39,7 +40,7 @@ Check before gathering input:
 |-------|-----|----------|
 | **Figma MCP** | Check for `mcp__figma__get_metadata` in available tools | Cannot proceed without it — Figma MCP is required |
 | **gh CLI** | `gh auth status` | If not available, offer the user a choice (see below) |
-| **FIGMA_TOKEN** (optional) | Check env var | Skip screenshot embedding, use Figma links only |
+| **FIGMA_TOKEN** (optional) | `[ -n "$FIGMA_TOKEN" ] && echo "set" \|\| echo "not set"` | Skip screenshot embedding, use Figma links only |
 
 ### If gh CLI is missing or not authenticated
 
@@ -60,22 +61,22 @@ Ask the user which they prefer:
 - Name files: `01-update-integration-layout.md`, `02-zapier-integration.md`, etc.
 - Each file contains the full issue body ready to copy-paste into GitHub
 
-## Step 1: Gather User Input (Single Interaction)
+## Step 1: Gather User Input
 
-Use AskUserQuestion to collect everything upfront:
+Ask the user directly in conversation — **do NOT use AskUserQuestion tool** for this. Have a natural back-and-forth to collect:
 
-**Required:**
+**Required — ask for each explicitly, never guess or assume:**
 - **Figma URL** — link to the parent section/page containing all design screens
-- **GitHub repo** — `owner/repo` format for issue creation
+- **GitHub repo** — ask the user to paste the repo link or `owner/repo`. **Never guess repo names** — naming conventions vary and guessing wastes time
 - **Overall context** — what is this feature/update about?
 
 **Optional (ask if not provided):**
 - **Issue templates** — does the team use specific templates? (Bug Report, Enhancement, New Feature, or custom)
-- **Asana/project management link** — to include in issue headers
+- **Asana/project management link** — to include in issue headers and for optional PM updates in Step 8
 - **Sections to skip** — any WIP or irrelevant sections?
 - **How to split issues** — one per section? grouped? single mega-issue?
 
-If the user provides issue templates, store them for use in Step 4. If not, use a sensible default structure with Description and Screenshots sections.
+**Issue templates:** Ask the user: "Do you have specific GitHub issue templates you'd like me to follow, or should I use the default ones?" If they provide templates, use them exactly. If not, use the skill's built-in defaults in Step 4.
 
 ## Step 2: Read Figma Structure
 
@@ -113,31 +114,17 @@ Record all information per section:
 
 Based on user preferences from Step 1, organize the captured data into issues.
 
-### Issue Type Detection
+### Templates, Detection & Extraction
 
-If the user provided templates, analyze each section to determine which template fits:
+**If the user provided their own templates, use them exactly.** Map the extracted information into their template fields. Do not improvise.
 
-- **Bug Report / Issue** — keywords: "bug", "fix", "broken", "error", "not working"
-- **Enhancement / Improvement** — keywords: "improve", "update", "move", "refactor", "optimize"
-- **New Feature** — keywords: "new", "add", "introduce", "implement", "create"
+**If using the skill's defaults**, read `issue-templates.md` in this skill directory. It contains:
+- 3 templates (Bug Report, Enhancement, New Feature)
+- Issue type detection logic with keywords
+- Information extraction rules for each template field
+- Title generation guidelines
 
-When unclear, default to **New Feature** for new integrations/features or **Enhancement** for updates to existing functionality.
-
-### Issue Structure
-
-Each issue should include:
-
-1. **Header table** (for New Feature template):
-   ```
-   | What | Where |
-   | ---- | ----- |
-   | Asana | [Asana](link) |
-   | Design | [Figma — Section Name](figma-url-to-specific-subsection) |
-   ```
-
-2. **Description** — synthesized from dev notes and screen context. Organize by screen state (Not Connected, Connected, Error, etc.). Include behavioral specs from dev notes.
-
-3. **Screenshots** — labeled with the screen state name. If `FIGMA_TOKEN` is available, embed as images (`![Label](url)`). Otherwise, use Figma links (`[Label](figma-url)`).
+When the issue type is unclear, default to **New Feature** for new integrations/features or **Enhancement** for updates to existing functionality.
 
 ### Title Generation
 
@@ -153,6 +140,8 @@ Always link to the **specific subsection** in Figma, not the parent section. Con
 ## Step 5: Ask Clarifying Questions
 
 **Before creating any issues**, present the planned issue structure and ask clarifying questions. This is critical — don't skip this step.
+
+**Ask questions as natural conversation, NOT via AskUserQuestion tool.** The tool forces rigid multiple-choice options that prevent nuance and follow-up. Instead, write your questions directly in your response so the user can answer freely and you can have a back-and-forth.
 
 Show the user:
 1. How many issues you plan to create
@@ -178,6 +167,8 @@ This step is **optional** — it requires a `FIGMA_TOKEN` environment variable s
 - The skill works fully without it
 
 **If `FIGMA_TOKEN` IS set:**
+
+Ask the user: "FIGMA_TOKEN is available — would you like embedded screenshots in the issues, or just Figma links?" Only proceed with export if they want embedded screenshots.
 
 Use the Figma REST API to export frame PNGs for embedding in GitHub issues.
 
@@ -219,6 +210,10 @@ Use `gh issue create` to create each issue on the target repo.
 - Include Figma subsection links in the header table
 - Always include the Asana/project management link if provided
 
+## Step 8: Update Project Management Tool (Optional)
+
+If the user provided an Asana/PM link in Step 1, offer to update it with the GitHub issue links and a summary. If Asana MCP tools are available, use them. Otherwise, output the update text for the user to paste manually.
+
 ## Common Mistakes
 
 | Mistake | Fix |
@@ -231,6 +226,11 @@ Use `gh issue create` to create each issue on the target repo.
 | Using `sed` to modify issue bodies with markdown tables | Pipe characters in tables break sed — use Python for string replacement |
 | Embedding screenshots as comments instead of in the issue body | Edit the issue body directly with `gh issue edit --body-file` |
 | Failing when `gh` CLI isn't set up | Fall back to markdown files — don't block the whole workflow |
+| Guessing the GitHub repo name | Always ask the user to paste it — never assume or suggest repo names |
+| Using AskUserQuestion for clarifying questions | Ask questions directly in conversation for natural back-and-forth |
+| Ignoring templates | If the user provided templates, follow them exactly. If not, use the skill's built-in defaults — do not freestyle |
+| Auto-proceeding with screenshot export | Ask the user if they want embedded screenshots or Figma links first |
+| Leaking FIGMA_TOKEN in env check output | Use `[ -n "$FIGMA_TOKEN" ] && echo "set" \|\| echo "not set"` — never echo the token value |
 
 ## Notes
 
