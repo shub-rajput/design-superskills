@@ -126,13 +126,6 @@ Based on user preferences from Step 1, organize the captured data into issues.
 
 When the issue type is unclear, default to **New Feature** for new integrations/features or **Enhancement** for updates to existing functionality.
 
-### Title Generation
-
-Generate concise titles (5-10 words) that reflect the core of the work:
-- New features: "Implement [Feature Name] with [Key Capability]"
-- Enhancements: "Update [Feature] to [New Behavior]"
-- Bug fixes: "[Component] — Fix [Issue Description]"
-
 ### Figma Links
 
 Always link to the **specific subsection** in Figma, not the parent section. Convert node IDs to URL format: `node-id=XXXX-YYYY` (replace `:` with `-`).
@@ -199,10 +192,7 @@ Use `gh issue create` to create each issue on the target repo.
 
 ### If gh CLI is NOT available (markdown output mode):
 
-1. Write each issue as a markdown file to `./dev-handoff-issues/`
-2. Name files: `01-<slug>.md`, `02-<slug>.md`, etc.
-3. Each file starts with a `# Title` line followed by the full issue body
-4. Tell the user the files are ready and where to find them
+Write markdown files as described in Step 0.
 
 ### Formatting rules (both modes):
 - Use HEREDOC for body to preserve markdown formatting
@@ -218,25 +208,13 @@ If the user provided an Asana/PM link in Step 1, offer to update it with the Git
 
 | Mistake | Fix |
 |---------|-----|
-| Screenshotting entire sections instead of individual frames | Always use individual frame node IDs — sections are too small to read |
-| Creating issues without asking clarifying questions first | Step 5 is mandatory — dev notes often have ambiguities |
-| Using the parent section Figma link instead of subsection | Each issue's Design link should point to its specific subsection node |
-| Proposing multiple issues when one grouped issue makes more sense | Ask the user how they want to split — sometimes one issue per feature is better than one per screen |
-| Forgetting to transcribe dev notes | Dev notes are the primary implementation spec — screenshots alone miss edge cases and behavioral requirements |
 | Using `sed` to modify issue bodies with markdown tables | Pipe characters in tables break sed — use Python for string replacement |
 | Embedding screenshots as comments instead of in the issue body | Edit the issue body directly with `gh issue edit --body-file` |
-| Failing when `gh` CLI isn't set up | Fall back to markdown files — don't block the whole workflow |
-| Guessing the GitHub repo name | Always ask the user to paste it — never assume or suggest repo names |
-| Using AskUserQuestion for clarifying questions | Ask questions directly in conversation for natural back-and-forth |
-| Ignoring templates | If the user provided templates, follow them exactly. If not, use the skill's built-in defaults — do not freestyle |
-| Auto-proceeding with screenshot export | Ask the user if they want embedded screenshots or Figma links first |
-| Leaking FIGMA_TOKEN in env check output | Use `[ -n "$FIGMA_TOKEN" ] && echo "set" \|\| echo "not set"` — never echo the token value |
+| Leaking FIGMA_TOKEN in env check output | Never echo the token — use the safe check in Step 0 |
+| Screenshotting entire sections instead of individual frames | Sections are too small to read — always use individual frame node IDs |
+| Forgetting to transcribe dev notes | Dev notes are the primary spec — screenshots alone miss edge cases |
 
 ## Notes
 
-- **Never create issues without user approval** — always go through Step 5 first
-- **Dev notes are the primary source of implementation detail** — they contain edge cases, error handling specs, and behavioral requirements that aren't visible in the screenshots alone
-- **One frame = one screen state** — always screenshot individual frames, not entire sections
-- **Screenshots are optional** — the skill works fully without `FIGMA_TOKEN`. Issues get Figma links instead of embedded images. Both modes are valid.
-- **Figma export URLs are temporary** — they last ~14 days but GitHub caches them via camo proxy. If permanent hosting is needed, commit to `.github/design-assets/` in the repo
-- **Cross-reference related issues** — if the user mentions that something is handled in a separate issue, link to it
+- **Figma export URLs are temporary** — ~14 days, but GitHub caches via camo proxy. If permanent hosting is needed later, commit to `.github/design-assets/` in the repo.
+- **Cross-reference related issues** — if the user mentions something is handled in a separate issue, link to it.
