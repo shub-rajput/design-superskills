@@ -1,6 +1,6 @@
 # design-superskills
 
-Claude Code plugin for design research and Figma organization — screenshot capture, annotated UX/marketing galleries, Figma screen organization, dev annotations, and MCP optimization.
+Claude Code plugin for design research, Figma organization, and dev handoff — screenshot capture, annotated UX/marketing galleries, Figma screen organization, dev annotations, MCP optimization, and GitHub issue generation from Figma designs.
 
 ## How it works
 
@@ -8,13 +8,14 @@ Tell Claude Code what you want to review — a WordPress plugin's admin UI, a co
 
 The plugin launches a headless browser, navigates through pages you care about, and captures screenshots. Then it dispatches review agents that analyze each screenshot through lenses you choose (UX quality, first-time experience, monetization, marketing effectiveness, conversion flow, and more). Everything comes together in an annotated HTML gallery — screenshots grouped by section, with issue callouts, opportunity scores, and comparison tables when you're reviewing multiple subjects. If you use Figma, the gallery imports directly.
 
-Five skills power this:
+Six skills power this:
 
 - **wp-plugin-research** — Screenshot and UX-review WordPress plugin admin UIs (local or remote)
 - **website-research** — Screenshot and marketing-review any public website
 - **design-organize** — Organize scattered Figma screens into labeled layouts with optional sub-sections
 - **design-annotations** — Add, reposition, or improve dev note components next to Figma screens
 - **mcp-optimize** — Create MCP-optimized versions of Figma screens for AI consumption
+- **dev-handoff** — Turn Figma design sections into GitHub issues for developer handoff, with template-aware formatting
 
 ---
 
@@ -88,12 +89,14 @@ design-superskills/
 │   ├── website-research/      # Public website screenshot capture + marketing review
 │   ├── design-organize/       # Figma screen organization + labeling
 │   ├── design-annotations/    # Dev note placement + copy improvement
-│   └── mcp-optimize/          # MCP-optimized sections + asset extraction
+│   ├── mcp-optimize/          # MCP-optimized sections + asset extraction
+│   └── dev-handoff/           # Figma designs → GitHub issues for dev handoff
 ├── agents/
 │   ├── ux-reviewer.md         # UX analysis of WP plugin admin screenshots
 │   ├── ux-comparator.md       # Side-by-side plugin comparison
 │   ├── marketing-reviewer.md  # Marketing/design analysis of public websites
 │   └── marketing-comparator.md# Side-by-side website comparison
+├── hooks/                     # SessionStart hook for agent-browser check
 ├── shared/
 │   └── common-steps.md        # Shared steps: permissions, gallery, Figma, troubleshooting
 └── templates/
@@ -136,6 +139,10 @@ Both skills are invoked by describing your intent in natural language. Claude Co
 > "Optimize these screens for MCP"
 > "Create lightweight dev-ready versions of these designs"
 
+**Dev handoff:**
+> "Hand off this Figma section to dev as GitHub issues"
+> "Turn these designs into tickets for the frontend team"
+
 ## Review Objectives
 
 Both skills support multiple review lenses:
@@ -157,7 +164,7 @@ Both skills support multiple review lenses:
 
 ## Figma Setup
 
-Required for **design-organize**, **design-annotations**, **mcp-optimize**, and Figma gallery import.
+Required for **design-organize**, **design-annotations**, **mcp-optimize**, **dev-handoff**, and Figma gallery import.
 
 These skills require the **remote Figma MCP server** — not the built-in Claude AI Figma integration.
 
@@ -166,6 +173,8 @@ claude mcp add --scope user --transport http figma https://mcp.figma.com/mcp
 ```
 
 Restart Claude Code after adding. When you reach the Figma import step during a skill run, Claude will use this tool automatically if it's available.
+
+**Optional for dev-handoff:** Set `FIGMA_TOKEN` in your environment to enable frame PNG export via the Figma REST API. Without it, dev-handoff still works and falls back to Figma links in GitHub issues.
 
 ---
 
