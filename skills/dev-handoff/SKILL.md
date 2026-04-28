@@ -31,12 +31,22 @@ Turn Figma design sections into GitHub issues for developer handoff. Reads the F
 | **6** | Create GitHub issues | With Figma links |
 | **7** | Add screenshots (optional) | Export, user drag-drops, then label via edit |
 | **8** | Update PM tool (optional) | Update Asana/PM task with issue links if provided |
+| **9** | Cleanup temp files | Offer to remove `./dev-handoff-issues/` and other handoff scratch |
 
-## BEFORE YOU START: Create Tasks
+## STEP 0a — HARD-GATE: Create Tasks BEFORE Anything Else
 
-**Use TaskCreate to create a task for each step.** Mark each as `in_progress` when starting and `completed` when done. This prevents skipping steps.
+<HARD-GATE>
+**You MUST invoke TaskCreate with the full task list below before any substantive work in this skill — before checking `gh`, before reading Figma metadata, before asking the user any clarifying question.**
 
-Tasks to create:
+The only tool calls allowed before TaskCreate are the unavoidable bootstrap ones: reading this SKILL.md and loading TaskCreate's schema if deferred. Nothing else. Not "just a quick `gh auth status`," not "just a quick Figma metadata read to confirm the URL." Those are Step 0 and Step 2 — they come after the task list exists.
+
+This applies even when this skill is chained after another skill (e.g., after `design-organize` or `design-annotations`). Chained invocations are the most common place where task setup gets skipped because the early steps "feel small" — they are not. If you skip this gate and only create tasks retroactively, the user cannot see structured progress and the skill's later HARD-GATEs lose their force.
+
+If you cannot invoke TaskCreate for any reason, STOP and explain why to the user before proceeding.
+</HARD-GATE>
+
+Create these tasks in a single TaskCreate batch:
+
 1. "Step 0: Check prerequisites"
 2. "Step 1: Gather user input"
 3. "Step 2: Read Figma structure"
@@ -46,6 +56,9 @@ Tasks to create:
 7. "Step 6: Create GitHub issues"
 8. "Step 7: Add screenshots (optional)"
 9. "Step 8: Update PM tool (optional)"
+10. "Step 9: Cleanup temp files"
+
+Mark each `in_progress` when starting and `completed` when done. **Tasks ARE the early steps — do not treat the first few as too trivial to track.**
 
 ## Step 0: Prerequisites
 
@@ -162,14 +175,30 @@ Show each planned issue **using the exact template format from Step 4** — same
 - Title and type of each
 - Which screens map to which issue
 
-### Part B: Flag ambiguities
+### Part B: Flag ambiguities (substance scan — NOT logistics)
 
-Scan the dev notes for these specific red flags and ask about each:
+<HARD-GATE>
+**Do not proceed to Part C until you have produced an explicit red-flag scan output.** This is a substance scan of the dev notes, NOT logistics questions about Asana links / titles / screenshot hosts. Logistics ≠ substance — do not conflate them.
+</HARD-GATE>
+
+Scan every dev note for these red flags and produce explicit output of the form:
+
+```
+Red-flag scan:
+- [dev note quote] → open question: ...
+- [dev note quote] → open question: ...
+(or: "No red flags found" with one-sentence reasoning per category)
+```
+
+Categories to scan:
 - **"Consult X" / "Check with X"** references — who decides?
-- **"Placeholder" / "WIP" / "TBD"** labels — include or skip?
-- **Open decisions** — e.g., provider choices, credit allotments, scope boundaries
-- **Missing edge cases** — error states mentioned but not designed, empty states not shown
+- **"Placeholder" / "WIP" / "TBD" / "or similar"** labels — include or skip?
+- **Open decisions** — provider choices, URL fallbacks ("if there is none…"), credit allotments, scope boundaries ("we can look into having this on all pages")
+- **Missing edge cases** — error states mentioned but not designed, empty states, fallback behavior when stored state is missing
+- **Dismissal/trigger conditions** — ambiguous triggers like "any successful email" — does that include adjacent flows?
 - **Dependencies between issues** — does one block another?
+
+Quote the dev-note text verbatim for each finding so the user can confirm context.
 
 ### Part C: Get approval
 
@@ -230,15 +259,34 @@ If the user provided an Asana/PM link in Step 1, offer to update it with the Git
 
 Also ask: "Would you like me to create a review subtask in Asana for reviewing the designs and GitHub issues?" If yes, create a subtask on the parent task with a summary of what was created and links to the GitHub issues and Figma section.
 
+## Step 9: Cleanup Temp Files
+
+Once issues are created and (optionally) the PM tool is updated, list every scratch file/dir this run produced and offer to remove them. Common candidates:
+
+- `./dev-handoff-issues/` (markdown drafts in markdown-output mode)
+- `./dev-handoff-issues/screenshots/` (downloaded PNGs from Figma export)
+- Any `/tmp/dev-handoff-*` files (issue body drafts, scan outputs, etc.)
+
+Ask the user: "I created the following temp files during this handoff: [list paths]. Want me to delete them now, or keep them for reference?"
+
+Only delete after explicit user confirmation. Use `rm` for files and `rm -rf` for directories — and only on paths you actually created in this run. Do not touch files you didn't create.
+
 ## Common Mistakes
 
 | Mistake | Fix |
 |---------|-----|
+| Skipping task setup because early steps look trivial | Tasks ARE the early steps; user can't see hidden progress. Always create the full list first. |
+| Skipping task setup when chained from another skill | Chained invocations are the most common skip-point. Step 0a applies regardless of how the skill was invoked. |
+| Conflating logistics questions with the Step 5 Part B substance scan | Asana link / title / hosting questions are not red-flag findings. Both must happen. |
 | Using `sed` to modify issue bodies with markdown tables | Pipe characters in tables break sed — use Python for string replacement |
 | Embedding screenshots as comments instead of in the issue body | Edit the issue body directly with `gh issue edit --body-file` |
+| Embedding Handoff/HTML-wrapper URLs as `<img src>` in GitHub issue bodies | GitHub's Camo proxy fetches the URL and renders broken because Handoff returns HTML, not raw image bytes. Use drag-drop into `user-attachments.githubusercontent.com` or a host that returns `content-type: image/*`. Verify with `curl -I <url>`. |
+| Guessing which `user-attachments/assets/<uuid>` URL is which screenshot | Those URLs 404 to unauthenticated curl. Ask the user to upload one screenshot at a time and label inline, OR confirm upload order against the numbered state list before labeling. |
+| Drafting from stale dev notes after the user edited them mid-flow | If dev notes were empty when this skill started, or the user says they updated them, re-run the dev-note read before drafting. |
 | Leaking FIGMA_TOKEN in env check output | Never echo the token — use the safe check in Step 0 |
 | Screenshotting entire sections instead of individual frames | Sections are too small to read — always use individual frame node IDs |
 | Forgetting to transcribe dev notes | Dev notes are the primary spec — screenshots alone miss edge cases |
+| Forgetting to clean up `./dev-handoff-issues/` and other scratch | Step 9 exists for this — offer cleanup before declaring done. |
 
 ## Notes
 
