@@ -4,87 +4,23 @@ Shared instructions referenced by both wp-plugin-research and website-research s
 
 ## Permissions (Step 0)
 
-This skill is **extremely command-heavy** — dozens of sequential bash commands for browser automation, screenshots, local server, and file operations. Before asking the user anything, check whether the required permissions are already configured.
+This skill is **extremely command-heavy** — dozens of sequential bash commands: agent-browser for screenshots (both skills), the local gallery server, Figma MCP calls, and WP-CLI (wp-plugin-research only). Approving each one individually is slow and tedious.
 
-### Step 0a: Check existing permissions
+### Recommended: switch to auto mode
 
-Read all three settings files (skip any that don't exist):
-1. Project local: `.claude/settings.local.json`
-2. Project shared: `.claude/settings.json`
-3. Global: `~/.claude/settings.json`
+The simplest way to run this skill is **auto mode** — Claude runs bash and tool calls without asking for per-command approval. No need to pre-add permission rules to a settings file, and no restart required.
 
-Collect every entry from the `permissions.allow` arrays across all three files. Claude Code merges allow rules from all levels, so a permission in any file counts.
+At the start, tell the user:
 
-Compare against the required permissions list below. Build a list of **missing** entries — any required permission not found in any of the three files.
+> **Heads up:** This review runs 40-50+ bash commands (agent-browser screenshots, the local gallery server, Figma MCP, plus WP-CLI for plugin reviews). To avoid approving each one, switch to **auto mode** — press **Shift+Tab** to cycle the permission mode until you see auto mode, then I'll proceed. If you'd rather not, I'll approve commands individually, which is slower.
 
-**Required permissions (core — both skills):**
-```
-Bash(agent-browser:*)
-Bash(agent-browser set viewport:*)
-Bash(python3 -m http.server:*)
-Bash(curl:*)
-Bash(mkdir:*)
-Bash(kill:*)
-Bash(open http:*)
-Bash(cat > screenshots:*)
-Bash(which:*)
-Bash(sleep:*)
-Bash(rm:*)
-Bash(lsof -i:*)
-```
+**Do NOT start the command-heavy steps until the user has either switched to auto mode or explicitly chosen to approve commands manually.** Once they confirm, proceed.
 
-**Additional required permissions (wp-plugin-research only):**
-```
-Bash(chmod +x:*)
-Bash(./wp-cli-local:*)
-Bash(wp:*)
-```
+If the user prefers a persistent allowlist over auto mode, they can add `Bash(...)` rules to `.claude/settings.local.json` themselves — but auto mode is the recommended path and needs no setup.
 
-**Format matching:** When checking existing permissions, treat both the colon syntax (`Bash(cmd:*)`) and space syntax (`Bash(cmd *)`) as equivalent. Either format counts as having the permission.
+### Running the local gallery server
 
-### Step 0b: Decide what to do
-
-**If ALL required permissions are present** → tell the user "Permissions already configured — proceeding." and move to the next step. No question needed.
-
-**If ANY required permissions are missing** → use AskUserQuestion and WAIT for the user's response:
-
-> **Heads up:** This review involves 40-50+ bash commands. Most permissions are configured, but these are missing:
->
-> _(list the missing permissions)_
->
-> How would you like to proceed?
-
-1. **Add missing permissions (Recommended)** — I'll add them to this project's `.claude/settings.local.json`, then you restart Claude Code and re-invoke the skill
-2. **Use bypass mode** — exit, restart with `claude --dangerously-skip-permissions`, then re-invoke the skill
-3. **Continue with manual approvals** — I'll approve each missing command individually (slow but works)
-
-**Do NOT move to the next step until the user has explicitly chosen an option (or permissions were already complete).**
-
-### Step 0c: Handle the user's choice
-
-- **Option 1:** Read the project's `.claude/settings.local.json` (create if it doesn't exist). Merge **only the missing permissions** into the `permissions.allow` array, preserving any existing entries and all other settings. After writing, tell the user: "Permissions added. Please restart Claude Code (`/exit` then relaunch) and re-invoke the skill." **Stop here — do nothing else.**
-- **Option 2:** Tell them to run `claude --dangerously-skip-permissions` and re-invoke the skill. **Stop here — do nothing else.**
-- **Option 3:** Proceed, but warn it will be slow.
-
-### Permission pattern syntax
-
-Use `Bash(command:*)` with a **colon** before the wildcard. This is the format Claude Code's own "don't ask again" feature generates. The docs call it "legacy" but it's what the matching engine actually uses.
-
-Shell operator awareness (from the docs):
-
-> Claude Code is aware of shell operators (like `&&`) so a prefix match rule like `Bash(safe-cmd *)` won't give it permission to run the command `safe-cmd && other-cmd`.
-
-This means commands with `&&`, `||`, `|`, `&`, or `$VARIABLE` will NOT match any wildcard permission rule. The skill already avoids these (see "No Shell Variables" section below), but a few edge cases remain — documented in the table below.
-
-### Commands that will still prompt (unavoidable)
-
-These use shell operators and cannot be pre-approved — Claude Code blocks them by design:
-
-| Command | Why it prompts | Skill workaround |
-|---------|---------------|------------------|
-| `python3 -m http.server 3000 &` | `&` is a shell operator | Use `run_in_background: true` on the Bash tool call instead of trailing `&` |
-| `agent-browser snapshot -i 2>&1 \| grep "keyword"` | `\|` pipe operator | Run `agent-browser snapshot -i` alone and search the output directly |
-| `cat > file <<'HEREDOC' ... HEREDOC` | Heredoc syntax | May still prompt — user approves once per session |
+Don't append a trailing `&` to start the server in the background (`&` is a shell operator). Instead, pass `run_in_background: true` on the Bash tool call. This applies whether or not auto mode is on.
 
 ## No Shell Variables in Bash Commands
 

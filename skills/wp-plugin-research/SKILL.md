@@ -13,7 +13,7 @@ Automate screenshot capture of WordPress plugin UIs, generate annotated HTML gal
 
 | Step | What | Key Decision |
 |------|------|-------------|
-| **0** | Permissions check | Bypass mode recommended |
+| **0** | Permissions | Switch to auto mode |
 | **1** | Choose environment (local vs remote) | Determines WP-CLI availability |
 | **2** | Gather ALL user input in one interaction | Objective, plugins, annotations, Figma |
 | **3** | Clean slate — deactivate other plugins | Local only |
@@ -47,7 +47,7 @@ Tasks to create:
 
 ## Step 0: Permissions (DO THIS FIRST — MANDATORY)
 
-**Read `shared/common-steps.md` → "Permissions" and "No Shell Variables in Bash Commands" sections.** Follow those instructions exactly. This skill requires both the core permissions AND the additional wp-plugin-research permissions listed there.
+**Read `shared/common-steps.md` → "Permissions" and "No Shell Variables in Bash Commands" sections.** Follow those instructions exactly. Recommend the user switch to auto mode before the command-heavy steps — this skill runs agent-browser, WP-CLI, the local gallery server, and Figma MCP calls.
 
 ## Step 1: Choose Environment
 
