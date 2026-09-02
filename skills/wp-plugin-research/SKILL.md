@@ -1,6 +1,6 @@
 ---
 name: wp-plugin-research
-description: Use when capturing screenshots of WordPress plugins for UX review, comparing competitor plugin UIs, creating annotated HTML galleries for Figma import, or when the user mentions plugin UX review, competitor analysis, or screenshot galleries.
+description: Use when capturing screenshots of WordPress plugins for UX review, comparing competitor plugin UIs, creating annotated HTML galleries for Figma import, collecting visual references of a plugin flow straight into a Figma section without annotations, or when the user mentions plugin UX review, competitor analysis, reference screenshots, or screenshot galleries.
 ---
 
 # WP Plugin Research
@@ -8,6 +8,8 @@ description: Use when capturing screenshots of WordPress plugins for UX review, 
 Automate screenshot capture of WordPress plugin UIs, generate annotated HTML galleries, and import to Figma for UX review.
 
 **Shared reference:** Read `shared/common-steps.md` for permissions, shell variable rules, Figma MCP setup, gallery generation, Figma import, annotation reference, comparison gallery, and troubleshooting. This file covers only WP-plugin-specific steps.
+
+**Two output modes.** *Annotated review* (Light or Impact & Opportunity) runs every step below. *Visual refs only* skips the review brief, reviewer, comparator and HTML gallery: after capture, screenshots go straight into Figma per `shared/figma-visual-refs.md`. The mode is chosen in Step 2.
 
 ## Quick Reference
 
@@ -27,6 +29,8 @@ Automate screenshot capture of WordPress plugin UIs, generate annotated HTML gal
 | **8** | Generate HTML gallery, verify, get approval | Start server once, keep alive |
 | **9** | Import to Figma | Optional |
 | **10** | Cleanup | Restore plugins, delete temp user, kill server |
+
+**Visual refs mode:** steps 7a, 7b, 7c and 8 are skipped; Step 9 follows `shared/figma-visual-refs.md`.
 
 ## BEFORE YOU START: Create Tasks
 
@@ -191,7 +195,7 @@ The objective shapes what gets annotated. All annotations should be viewed throu
 **Question: Annotation depth**
 - Ask: "How detailed should annotations be?"
 - Options:
-  - **None** — screenshots only, no annotations (fastest)
+  - **Visual refs only** — screenshots only, no annotations, no gallery; placed straight into a Figma section as a labelled row per plugin (fastest; see `shared/figma-visual-refs.md`). Pick this when the user says "just references", "no pointers", "keep it simple", or points at an existing refs section.
   - **Light** — brief colored callouts (positive/critical/observation) with 1-2 sentence descriptions
   - **Impact & Opportunity** — each annotation scored on Impact (1-5) and Opportunity (1-5). Best for presenting findings to stakeholders.
 
@@ -372,6 +376,8 @@ Before writing the review brief, list all captured screenshots and Read any with
 
 ## Step 7a: Write Review Brief
 
+**Visual refs mode:** skip 7a, 7b, 7c and 8. Go to Step 9.
+
 After all screenshots are captured for a plugin, write a **review brief** markdown file that consolidates everything the subagent needs.
 
 **File:** `screenshots/<plugin-slug>/review-brief.md`
@@ -449,7 +455,7 @@ The agent returns:
 2. Spot-check 2-3 annotations for objective relevance
 3. Verify section groupings make sense for the gallery layout
 
-**If annotation depth is "none":** Skip this step entirely — go straight to Step 8 with screenshots only.
+**Visual refs mode:** this step does not run (see 7a).
 
 ## Step 7c: UX Comparison (Subagent — Multi-Plugin Only)
 
@@ -471,11 +477,15 @@ Use the comparator output to build the comparison gallery in Step 8.
 
 ## Step 8: Generate HTML Gallery
 
+**Visual refs mode:** skip. The gallery exists to preview annotations and to feed `generate_figma_design`; neither applies.
+
 **Read `shared/common-steps.md` → "Generate HTML Gallery", "Local Server & Gallery Verification" sections.** Follow those instructions, using `gallery-<plugin-slug>.html` as the filename.
 
 ## Step 9: Import to Figma
 
-**Read `shared/common-steps.md` → "Import to Figma" section.**
+**Visual refs mode:** follow `shared/figma-visual-refs.md` — one labelled row per plugin inside the user's refs section, images placed with `upload_assets`. No gallery, no `generate_figma_design`.
+
+**Annotated modes:** read `shared/common-steps.md` → "Import to Figma" section.
 
 ## Step 10: Cleanup
 

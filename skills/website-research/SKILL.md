@@ -9,6 +9,8 @@ Capture screenshots of public websites, generate annotated HTML galleries, and i
 
 **Shared reference:** Read `shared/common-steps.md` for permissions, shell variable rules, Figma MCP setup, gallery generation, Figma import, annotation reference, comparison gallery, and troubleshooting. This file covers only website-specific steps.
 
+**Two output modes.** *Annotated review* (Light or Impact & Opportunity) runs every step below. *Visual refs only* skips the review brief, reviewer, comparator and HTML gallery: after capture, screenshots go straight into Figma per `shared/figma-visual-refs.md`. The mode is chosen in Step 2.
+
 ## Quick Reference
 
 | Step | What | Key Decision |
@@ -92,7 +94,7 @@ If the user chooses option 4, navigate the site with agent-browser, build a page
 
 **Question: Annotation depth**
 
-- **None** — screenshots only, no annotations (fastest)
+- **Visual refs only** — screenshots only, no annotations, no gallery; placed straight into a Figma section as a labelled row per site (fastest; see `shared/figma-visual-refs.md`). Pick this when the user says "just references", "no pointers", "keep it simple", or points at an existing refs section.
 - **Light** — brief colored callouts (positive/critical/observation) with 1-2 sentence descriptions
 - **Impact & Opportunity** — each annotation scored on Impact (1-5) and Opportunity (1-5)
 
@@ -219,6 +221,8 @@ Before writing the review brief, list all captured screenshots and Read any with
 
 ## Step 5: Write Review Brief
 
+**Visual refs mode:** skip Steps 5, 6, 7 and 8. Go to Step 9.
+
 After all screenshots are captured for a site, write a review brief that consolidates everything the subagent needs.
 
 **File:** `screenshots/<site-slug>/review-brief.md`
@@ -260,7 +264,7 @@ After all screenshots are captured for a site, write a review brief that consoli
 
 ## Step 6: Marketing Review (Subagent — Optional)
 
-**If annotation depth is "none": skip this step entirely — go straight to Step 8.**
+**Visual refs mode:** this step does not run (see Step 5).
 
 Dispatch a **general-purpose** subagent to analyze screenshots using the marketing-reviewer prompt template. Do NOT analyze screenshots yourself — delegate to the agent.
 
@@ -312,11 +316,15 @@ Use the comparator output to build the comparison gallery in Step 8.
 
 ## Step 8: Generate HTML Gallery
 
+**Visual refs mode:** skip. The gallery exists to preview annotations and to feed `generate_figma_design`; neither applies.
+
 **Read `shared/common-steps.md` → "Generate HTML Gallery", "Local Server & Gallery Verification" sections.** Follow those instructions, using `gallery-<site-slug>.html` as the filename. Replace header metadata with site name, URL, and description instead of plugin metadata.
 
 ## Step 9: Import to Figma
 
-**Read `shared/common-steps.md` → "Import to Figma" section.**
+**Visual refs mode:** follow `shared/figma-visual-refs.md` — one labelled row per site inside the user's refs section, images placed with `upload_assets`. No gallery, no `generate_figma_design`.
+
+**Annotated modes:** read `shared/common-steps.md` → "Import to Figma" section.
 
 ## Step 10: Cleanup
 

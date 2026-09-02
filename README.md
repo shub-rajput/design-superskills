@@ -12,6 +12,8 @@ Six skills power this:
 
 - **wp-plugin-research** — Screenshot and UX-review WordPress plugin admin UIs (local or remote)
 - **website-research** — Screenshot and marketing-review any public website
+
+  Both research skills have a **visual refs only** mode: no annotations, no gallery. Screenshots are placed straight into a Figma section as one labelled row per plugin or site, matching any row already there.
 - **design-organize** — Organize scattered Figma screens into labeled layouts with optional sub-sections
 - **design-annotations** — Add, reposition, or improve dev note components next to Figma screens
 - **mcp-optimize** — Create MCP-optimized versions of Figma screens for AI consumption

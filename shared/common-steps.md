@@ -220,7 +220,7 @@ curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/gallery-<slug>.html
 
 ## Import to Figma
 
-Only if user provided a Figma file URL.
+Only if user provided a Figma file URL. This is the annotated-gallery path; for **visual refs mode** use `shared/figma-visual-refs.md` instead (direct `upload_assets`, no gallery).
 
 1. Extract `fileKey` from URL: `figma.com/design/:fileKey/:fileName`
 2. Call `mcp__figma__generate_figma_design` with `outputMode: "existingFile"` and `fileKey`
