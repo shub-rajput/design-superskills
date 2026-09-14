@@ -1,6 +1,6 @@
 # design-superskills
 
-Claude Code plugin for design research, Figma organization, and dev handoff — screenshot capture, annotated UX/marketing galleries, Figma screen organization, dev annotations, MCP optimization, and GitHub issue generation from Figma designs.
+Claude Code plugin for design research, Figma organization, and dev handoff — screenshot capture, annotated UX/marketing galleries, research synthesis from canvas notes, Figma screen organization, dev annotations, MCP optimization, and GitHub issue generation from Figma designs.
 
 ## How it works
 
@@ -8,12 +8,13 @@ Tell Claude Code what you want to review — a WordPress plugin's admin UI, a co
 
 The plugin launches a headless browser, navigates through pages you care about, and captures screenshots. Then it dispatches review agents that analyze each screenshot through lenses you choose (UX quality, first-time experience, monetization, marketing effectiveness, conversion flow, and more). Everything comes together in an annotated HTML gallery — screenshots grouped by section, with issue callouts, opportunity scores, and comparison tables when you're reviewing multiple subjects. If you use Figma, the gallery imports directly.
 
-Six skills power this:
+Seven skills power this:
 
 - **wp-plugin-research** — Screenshot and UX-review WordPress plugin admin UIs (local or remote)
 - **website-research** — Screenshot and marketing-review any public website
 
   Both research skills have a **visual refs only** mode: no annotations, no gallery. Screenshots are placed straight into a Figma section as one labelled row per plugin or site, matching any row already there.
+- **research-synthesis** — The follow-up to visual refs. Reads the observations on a refs section (sticky notes, dev notes, text notes, or observations gathered in chat) and turns them into one document: problem statement, objectives, shared patterns, current state, scope, directions, feature ideas, and a collapsed inventory linking back to every note
 - **design-organize** — Organize scattered Figma screens into labeled layouts with optional sub-sections
 - **design-annotations** — Add, reposition, or improve dev note components next to Figma screens
 - **mcp-optimize** — Create MCP-optimized versions of Figma screens for AI consumption
@@ -89,6 +90,7 @@ design-superskills/
 ├── skills/
 │   ├── wp-plugin-research/    # WP plugin screenshot capture + UX review
 │   ├── website-research/      # Public website screenshot capture + marketing review
+│   ├── research-synthesis/    # Canvas notes → problem, objectives, patterns, directions doc
 │   ├── design-organize/       # Figma screen organization + labeling
 │   ├── design-annotations/    # Dev note placement + copy improvement
 │   ├── mcp-optimize/          # MCP-optimized sections + asset extraction
@@ -129,6 +131,10 @@ Both skills are invoked by describing your intent in natural language. Claude Co
 > "Capture and review the marketing page for wpforms.com"
 > "Compare the pricing pages of the top 3 email marketing tools"
 
+**Research synthesis:**
+> "Turn the notes in this refs section into a problem statement, objectives and directions"
+> "Synthesize my research into one doc I can send to my managers"
+
 **Design organize:**
 > "Organize this section https://figma.com/design/..."
 > "Clean up and label these screens in Figma"
@@ -149,6 +155,8 @@ Both skills are invoked by describing your intent in natural language. Claude Co
 
 Both skills support multiple review lenses:
 
+**research-synthesis** takes no lens. It works from the observations already on the canvas (or gathered in chat) and writes in an audit voice: it summarises, it does not rank directions or recommend one.
+
 **wp-plugin-research:**
 - General UX
 - First-Time User Experience
@@ -166,7 +174,7 @@ Both skills support multiple review lenses:
 
 ## Figma Setup
 
-Required for **design-organize**, **design-annotations**, **mcp-optimize**, **dev-handoff**, and Figma gallery import.
+Required for **research-synthesis**, **design-organize**, **design-annotations**, **mcp-optimize**, **dev-handoff**, and Figma gallery import.
 
 These skills require the **remote Figma MCP server** — not the built-in Claude AI Figma integration.
 
