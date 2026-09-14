@@ -5,7 +5,7 @@ description: Use when a Figma section holds reference screenshots (competitors, 
 
 # Research Synthesis
 
-Turn a canvas of reference screenshots and observations into one document a manager can read in ten minutes: problem, objectives, shared patterns, current state, scope, directions, feature ideas, and a collapsed inventory of every source note. This is the follow-up to the visual refs capture flow (`shared/figma-visual-refs.md`): capture puts screens on the canvas, this skill turns what was noticed about them into a synthesis.
+Turn a canvas of reference screenshots and observations into one document a manager can read in ten minutes: problem, objectives, shared patterns, current state, scope, directions, feature ideas, and a collapsed inventory of every source note. This is the follow-up to `design-research`: capture puts screens on the canvas, this skill turns what was noticed about them into a synthesis.
 
 The document is the user's audit, written in their voice for their audience. Claude organises and compresses. Claude does not rank, recommend, or decide.
 
@@ -181,5 +181,5 @@ After each round, edit the data structure, rebuild both outputs, republish to th
 
 ## Chaining
 
-- **Before:** `shared/figma-visual-refs.md` (screens on the canvas), `design-annotations` (if the user wants dev-note style observations placed next to screens instead of stickies).
+- **Before:** `design-research` (screens on the canvas, optional observations next to them), `design-annotations` (if the user wants dev-note style observations placed next to screens instead of stickies).
 - **After:** the directions section is the brief for design exploration; the feature ideas section is a backlog seed for the user's task tracker.

@@ -1,24 +1,21 @@
 # design-superskills
 
-Claude Code plugin for design research, Figma organization, and dev handoff — screenshot capture, annotated UX/marketing galleries, research synthesis from canvas notes, Figma screen organization, dev annotations, MCP optimization, and GitHub issue generation from Figma designs.
+Claude Code plugin for design research, Figma organization, and dev handoff — screenshots of any site or app flow placed into Figma as labelled reference rows, optional review observations and comparisons, research synthesis from canvas notes, Figma screen organization, dev annotations, MCP optimization, and GitHub issue generation from Figma designs.
 
 ## How it works
 
-Tell Claude Code what you want to review — a WordPress plugin's admin UI, a competitor's marketing page, or a set of pricing pages to compare. It handles the rest.
+Tell Claude Code what you want to reference or review — a competitor's onboarding, three booking apps' admin flows, a set of pricing pages. It launches a headless browser, walks the flow, captures screenshots, and places them into a Figma refs section as one labelled row per source, matching any row you already arranged by hand. If you ask for it, review agents read the screens and their observations land on the canvas next to each screen (or in an annotated HTML gallery), with a comparison table when there are several sources. When the notes are in place, a second skill turns them into a synthesis document.
 
-The plugin launches a headless browser, navigates through pages you care about, and captures screenshots. Then it dispatches review agents that analyze each screenshot through lenses you choose (UX quality, first-time experience, monetization, marketing effectiveness, conversion flow, and more). Everything comes together in an annotated HTML gallery — screenshots grouped by section, with issue callouts, opportunity scores, and comparison tables when you're reviewing multiple subjects. If you use Figma, the gallery imports directly.
+Six skills power this:
 
-Seven skills power this:
-
-- **wp-plugin-research** — Screenshot and UX-review WordPress plugin admin UIs (local or remote)
-- **website-research** — Screenshot and marketing-review any public website
-
-  Both research skills have a **visual refs only** mode: no annotations, no gallery. Screenshots are placed straight into a Figma section as one labelled row per plugin or site, matching any row already there.
-- **research-synthesis** — The follow-up to visual refs. Reads the observations on a refs section (sticky notes, dev notes, text notes, or observations gathered in chat) and turns them into one document: problem statement, objectives, shared patterns, current state, scope, directions, feature ideas, and a collapsed inventory linking back to every note
+- **design-research** — Capture any site, web app, or local app flow and place the screenshots into a Figma refs section as labelled rows. Optional layers: review observations next to the screens (marketing lens for public sites, UX lens for apps and admin UIs), an annotated HTML gallery, and a comparison across sources
+- **research-synthesis** — The follow-up. Reads the observations on a refs section (sticky notes, dev notes, text notes, or observations gathered in chat) and turns them into one document: problem statement, objectives, shared patterns, current state, scope, directions, feature ideas, and a collapsed inventory linking back to every note
 - **design-organize** — Organize scattered Figma screens into labeled layouts with optional sub-sections
 - **design-annotations** — Add, reposition, or improve dev note components next to Figma screens
 - **mcp-optimize** — Create MCP-optimized versions of Figma screens for AI consumption
 - **dev-handoff** — Turn Figma design sections into GitHub issues for developer handoff, with template-aware formatting
+
+**WordPress plugin research** (WP-CLI, temporary admin user, plugin deactivation, first-run gates) is a separate skill, [wp-plugin-research](https://github.com/shub-rajput/wp-plugin-research-skill), that prepares the site and hands over to `design-research` for capture and Figma placement.
 
 ---
 
@@ -28,12 +25,7 @@ Seven skills power this:
 
 - **Claude Code** with plugin support
 - **[agent-browser](https://github.com/vercel-labs/agent-browser)** — required for all screenshot capture
-
-**For wp-plugin-research only:**
-- Local WordPress site with WP-CLI, OR access credentials to a remote/staging site
-
-**Optional:**
-- **Figma MCP** — needed only if you want to import galleries into Figma (see [Figma Setup](#figma-setup))
+- **Figma MCP** (remote server) — required for design-research, since Figma is its default output, and for the Figma skills (see [Figma Setup](#figma-setup))
 
 ### Step 1: Add the marketplace
 
@@ -59,9 +51,9 @@ npx skills add https://github.com/vercel-labs/agent-browser --skill agent-browse
 
 Restart Claude Code. On launch, the session-start hook checks for agent-browser and shows a warning if it's missing. Then try:
 
-> "Capture and review the marketing page for stripe.com"
+> "Put screenshots of stripe.com's pricing flow into my Figma refs section"
 
-Claude should automatically invoke the **website-research** skill.
+Claude should automatically invoke the **design-research** skill.
 
 ---
 
@@ -75,61 +67,60 @@ Claude should automatically invoke the **website-research** skill.
 
 ## The Basic Workflow
 
-1. **Describe your intent** — "Review the WooCommerce plugin admin UI" or "Compare the pricing pages of Mailchimp, ConvertKit, and Beehiiv"
-2. **Configure permissions** — One-time setup for bash command approvals (the skills run 40–50+ commands for browser automation)
-3. **Screenshots captured** — Agent-browser navigates and captures PNGs, organized by subject
-4. **Review agents dispatched** — Specialized subagents analyze each screenshot through your chosen lens
-5. **Gallery generated** — Annotated HTML gallery with grouped sections, annotations, and scores
-6. **Comparison table** (multi-subject only) — Side-by-side ratings across dimensions with a verdict
-7. **Figma import** (optional) — Gallery pushed to Figma via MCP
+1. **Describe your intent** — "Reference the onboarding of these three apps in my Figma refs section" or "Compare the pricing pages of Mailchimp, ConvertKit, and Beehiiv"
+2. **Answer one question** — sources, flow, the Figma section, and which layers you want (refs only, observations, gallery, comparison)
+3. **Screenshots captured** — agent-browser walks the flow and captures PNGs, one folder per source
+4. **Rows placed in Figma** — one labelled row per source, matching any row already there
+5. **Observations placed** (optional) — review agents read the screens; their notes land next to each screen or in an annotated gallery
+6. **Comparison** (optional, multi-source) — side-by-side ratings with a verdict
+7. **Synthesis** — `research-synthesis` turns the notes into a problem statement, objectives and directions
 
 ## What's Inside
 
 ```
 design-superskills/
 ├── skills/
-│   ├── wp-plugin-research/    # WP plugin screenshot capture + UX review
-│   ├── website-research/      # Public website screenshot capture + marketing review
+│   ├── design-research/       # Capture any flow → Figma refs rows (+ optional observations, gallery, comparison)
+│   │   ├── SKILL.md
+│   │   ├── capture.md         # Login, capture notes, Figma placement recipe
+│   │   └── review-layer.md    # Review brief, agents, placing observations, comparison
 │   ├── research-synthesis/    # Canvas notes → problem, objectives, patterns, directions doc
 │   ├── design-organize/       # Figma screen organization + labeling
 │   ├── design-annotations/    # Dev note placement + copy improvement
 │   ├── mcp-optimize/          # MCP-optimized sections + asset extraction
 │   └── dev-handoff/           # Figma designs → GitHub issues for dev handoff
 ├── agents/
-│   ├── ux-reviewer.md         # UX analysis of WP plugin admin screenshots
-│   ├── ux-comparator.md       # Side-by-side plugin comparison
+│   ├── ux-reviewer.md         # UX analysis of app and admin UI screenshots
+│   ├── ux-comparator.md       # Side-by-side app comparison
 │   ├── marketing-reviewer.md  # Marketing/design analysis of public websites
 │   └── marketing-comparator.md# Side-by-side website comparison
+├── docs/CHANGELOG.md
 ├── hooks/                     # SessionStart hook for agent-browser check
 ├── shared/
-│   └── common-steps.md        # Shared steps: permissions, gallery, Figma, troubleshooting
+│   └── common-steps.md        # Shared steps: permissions, capture strategy, gallery, troubleshooting
 └── templates/
     └── gallery.html           # Figma-compatible HTML gallery template
 ```
 
 ## What You Get
 
-Each run produces:
+Each design-research run produces:
 
-- **PNG screenshots** organized by subject in `screenshots/`
-- **Annotated HTML gallery** (`screenshots/gallery.html`) with:
-  - Screenshots grouped by section (Onboarding, Settings, Core Feature, etc.)
-  - UX or marketing annotations per screenshot (issues, opportunities, positives)
-  - Impact & Opportunity scores
-  - Comparison table when reviewing multiple subjects
-- **Figma-ready import** via the HTML-to-design capture workflow
+- **PNG screenshots** organized by source in `screenshots/`, with journey notes per screen
+- **Figma refs rows** — one sub-section per source with labelled tiles, inside your refs section
+- **Observations next to the screens** (optional) — one note per screen with typed annotations, or an annotated HTML gallery with Impact and Opportunity scores
+- **Comparison table** (optional) when reviewing several sources
+
+Each research-synthesis run produces an HTML page and a Markdown copy of the synthesis, with a chip on every claim linking back to its source note.
 
 ## Usage
 
-Both skills are invoked by describing your intent in natural language. Claude Code detects the right skill automatically.
+Skills are invoked by describing your intent in natural language.
 
-**WP plugin research:**
-> "Review the WooCommerce plugin admin UI on my local site"
-> "Compare the onboarding flows of three form plugins"
-
-**Website research:**
-> "Capture and review the marketing page for wpforms.com"
-> "Compare the pricing pages of the top 3 email marketing tools"
+**Design research:**
+> "Put screenshots of these three admin flows into my Figma refs section, one row each"
+> "Capture wpforms.com's pricing flow as references, and add your observations next to the screens"
+> "Compare the onboarding of these two apps"
 
 **Research synthesis:**
 > "Turn the notes in this refs section into a problem statement, objectives and directions"
@@ -151,30 +142,30 @@ Both skills are invoked by describing your intent in natural language. Claude Co
 > "Hand off this Figma section to dev as GitHub issues"
 > "Turn these designs into tickets for the frontend team"
 
-## Review Objectives
+## Review Lenses
 
-Both skills support multiple review lenses:
+When you choose the observations layer in design-research:
 
-**research-synthesis** takes no lens. It works from the observations already on the canvas (or gathered in chat) and writes in an audit voice: it summarises, it does not rank directions or recommend one.
-
-**wp-plugin-research:**
+**Apps and admin UIs (ux-reviewer):**
 - General UX
 - First-Time User Experience
 - Upsell & Monetization
 - Custom (you describe the focus)
 
-**website-research:**
+**Public websites (marketing-reviewer):**
 - Marketing Effectiveness
 - Visual Design
 - Conversion Flow
 - Content Strategy
 - Custom
 
+**research-synthesis** takes no lens. It works from the observations already on the canvas (or gathered in chat) and writes in an audit voice: it summarises, it does not rank directions or recommend one.
+
 ---
 
 ## Figma Setup
 
-Required for **research-synthesis**, **design-organize**, **design-annotations**, **mcp-optimize**, **dev-handoff**, and Figma gallery import.
+Required for **design-research**, **research-synthesis**, **design-organize**, **design-annotations**, **mcp-optimize**, and **dev-handoff**.
 
 These skills require the **remote Figma MCP server** — not the built-in Claude AI Figma integration.
 
@@ -182,7 +173,7 @@ These skills require the **remote Figma MCP server** — not the built-in Claude
 claude mcp add --scope user --transport http figma https://mcp.figma.com/mcp
 ```
 
-Restart Claude Code after adding. When you reach the Figma import step during a skill run, Claude will use this tool automatically if it's available.
+Restart Claude Code after adding. design-research places screenshots with `upload_assets` and `use_figma`; the optional gallery import uses `generate_figma_design`.
 
 **Optional for dev-handoff:** Set `FIGMA_TOKEN` in your environment to enable frame PNG export via the Figma REST API. Without it, dev-handoff still works and falls back to Figma links in GitHub issues.
 
@@ -190,7 +181,7 @@ Restart Claude Code after adding. When you reach the Figma import step during a 
 
 ## Permissions
 
-The skills run a large number of bash commands. On first use, Claude will ask how you want to handle permissions:
+The research skills run a large number of bash commands. On first use, Claude will ask how you want to handle permissions:
 
 1. **Add to settings (recommended)** — Claude writes the required permissions to `.claude/settings.json` in your project. Restart Claude Code and re-invoke.
 2. **Bypass mode** — Restart with `claude --dangerously-skip-permissions` and re-invoke.

@@ -1,10 +1,10 @@
 # Common Steps Reference
 
-Shared instructions referenced by both wp-plugin-research and website-research skills.
+Shared instructions referenced by the design-research skill (and by the separate wp-plugin-research skill).
 
 ## Permissions (Step 0)
 
-This skill is **extremely command-heavy** — dozens of sequential bash commands: agent-browser for screenshots (both skills), the local gallery server, Figma MCP calls, and WP-CLI (wp-plugin-research only). Approving each one individually is slow and tedious.
+This skill is **extremely command-heavy** — dozens of sequential bash commands: agent-browser for screenshots, the local gallery server, and Figma MCP calls. Approving each one individually is slow and tedious.
 
 ### Recommended: switch to auto mode
 
@@ -12,7 +12,7 @@ The simplest way to run this skill is **auto mode** — Claude runs bash and too
 
 At the start, tell the user:
 
-> **Heads up:** This review runs 40-50+ bash commands (agent-browser screenshots, the local gallery server, Figma MCP, plus WP-CLI for plugin reviews). To avoid approving each one, switch to **auto mode** — press **Shift+Tab** to cycle the permission mode until you see auto mode, then I'll proceed. If you'd rather not, I'll approve commands individually, which is slower.
+> **Heads up:** This run needs 40-50+ bash commands (agent-browser screenshots, the local gallery server, Figma MCP). To avoid approving each one, switch to **auto mode** — press **Shift+Tab** to cycle the permission mode until you see auto mode, then I'll proceed. If you'd rather not, I'll approve commands individually, which is slower.
 
 **Do NOT start the command-heavy steps until the user has either switched to auto mode or explicitly chosen to approve commands manually.** Once they confirm, proceed.
 
@@ -26,7 +26,7 @@ Don't append a trailing `&` to start the server in the background (`&` is a shel
 
 Claude Code flags commands containing `$VARIABLE` syntax (like `$HOME`, `$SESSION`) as requiring **extra** manual approval for shell expansion — even with pre-configured permissions this adds friction.
 
-**Rule: Always use fully resolved, literal paths in every Bash command. Never use `$HOME`, `$SESSION`, `$URL`, `$PHP_BIN`, `$SOCKET`, `$WP_CLI`, `$WP_PATH`, or any other shell variable.**
+**Rule: Always use fully resolved, literal paths in every Bash command. Never use `$HOME`, `$SESSION`, `$URL`, or any other shell variable.**
 
 ```bash
 # WRONG — triggers extra "shell expansion" approval prompt:
@@ -50,7 +50,7 @@ agent-browser --session ws-abc123 screenshot /Users/shub/Local\ Sites/reviewer-t
 agent-browser --session ws-abc123 screenshot "/Users/shub/Local Sites/reviewer-test/screenshots/01-dashboard.png"
 ```
 
-This commonly affects Local by Flywheel sites (`Local Sites` directory) and any path with spaces.
+This commonly affects local dev tools that keep sites under a `Local Sites` directory, and any path with spaces.
 
 ## Figma MCP Setup
 
@@ -189,7 +189,7 @@ The reviewer subagent should Read all parts for a screen and analyze them as one
 
 Read the template at `templates/gallery.html` (relative to this skill's repo root). Copy it to `screenshots/gallery-<slug>.html` and customize:
 
-- Replace `Plugin Name` with the subject name in the header `<h1>`
+- Replace the placeholder name with the subject name in the header `<h1>`
 - Replace `Author`, `vX.X`, `Description` in the header `<p>` with metadata
 - Replace `/* ACCENT_COLOR */` with a brand-appropriate color (for `.step-num` background and `.flow-label` border)
 - Populate sections from the reviewer JSON: one `.flow-group` per section, one `.screen-item` per screenshot
@@ -220,7 +220,7 @@ curl -s -o /dev/null -w "%{http_code}" http://localhost:3000/gallery-<slug>.html
 
 ## Import to Figma
 
-Only if user provided a Figma file URL. This is the annotated-gallery path; for **visual refs mode** use `shared/figma-visual-refs.md` instead (direct `upload_assets`, no gallery).
+Only if user provided a Figma file URL. This is the annotated-gallery path. Refs placement (direct `upload_assets`, no gallery) is in `skills/design-research/capture.md`.
 
 1. Extract `fileKey` from URL: `figma.com/design/:fileKey/:fileName`
 2. Call `mcp__figma__generate_figma_design` with `outputMode: "existingFile"` and `fileKey`
