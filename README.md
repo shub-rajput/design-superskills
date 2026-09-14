@@ -94,7 +94,7 @@ design-superskills/
 │   ├── ux-comparator.md       # Side-by-side app comparison
 │   ├── marketing-reviewer.md  # Marketing/design analysis of public websites
 │   └── marketing-comparator.md# Side-by-side website comparison
-├── docs/CHANGELOG.md
+├── CHANGELOG.md
 ├── hooks/                     # SessionStart hook for agent-browser check
 ├── shared/
 │   └── common-steps.md        # Shared steps: permissions, capture strategy, gallery, troubleshooting
