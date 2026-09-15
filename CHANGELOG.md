@@ -1,5 +1,9 @@
 # Changelog
 
+## 2.0.1
+
+- Removed the `mcp-optimize` skill. `design-organize` and `design-annotations` no longer offer it as a next step.
+
 ## 2.0.0
 
 - New `design-research` skill replaces `website-research` and `wp-plugin-research`. One capture flow for public sites, logged-in web apps and local apps; screenshots land in a Figma refs section as labelled rows by default; observations, gallery and comparison are optional layers chosen up front.

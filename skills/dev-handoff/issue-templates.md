@@ -5,7 +5,7 @@
 ### 1. Bug Report / Issue Template
 
 ```
-**Helpscout Ticket or WordPress Forum link**: 
+**Support ticket or forum link**: 
 <!--- Remove section if irrelevant. -->
 
 
@@ -53,11 +53,11 @@
 ```
 | What | Where |
 | ---- | ----- |
-| Asana | link |
+| Task | link |
 | Design | Figma |
 
 ## Description
-<!--- If this feature doesn't have a pitch, provide here all the relevant information: why it's needed, who will use it etc. Be as concise and descriptive as possible. -->
+<!--- If this feature doesn't have a spec, provide here all the relevant information: why it's needed, who will use it etc. Be as concise and descriptive as possible. -->
 
 ## Screenshots
 <!--- Remove this section if irrelevant. Share here any mockups/screenshots that you have. -->
@@ -81,7 +81,7 @@ Once the issue type is determined, extract relevant information to populate the 
 
 ### For Bug Report / Issue Template:
 
-- **Helpscout Ticket or WordPress Forum link**: Leave as-is in the template — the full URL will be added manually later.
+- **Support ticket or forum link**: Leave as-is in the template — the full URL will be added manually later.
 - **Expected Behavior**: Extract sentences that describe the desired or correct outcome.
 - **Current Behavior**: Extract sentences that describe what is actually happening, which deviates from the expected behavior.
 - **Possible Solution**: Extract any suggestions for a fix, a workaround, or a potential cause of the bug.
@@ -96,7 +96,7 @@ Once the issue type is determined, extract relevant information to populate the 
 
 ### For New Feature Template:
 
-- **What / Where (Asana, Design)**: Populate Asana with the PM link if provided. Populate Design with the Figma subsection link.
+- **What / Where (Task, Design)**: Populate Task with the PM link if provided. Populate Design with the Figma subsection link.
 - **Description**: Extract the comprehensive explanation of the new feature, including its purpose, the problem it solves, who the target users are, and its benefits. Synthesize from dev notes and screen context. Organize by screen state (Not Connected, Connected, Error, etc.).
 - **Screenshots**: Populate with labeled frame screenshots from the Figma designs.
 

@@ -44,10 +44,10 @@ Also avoid chaining commands with `||` and `&&` — these trigger "shell operato
 
 ```bash
 # WRONG — triggers "backslash-escaped whitespace" warning:
-agent-browser --session ws-abc123 screenshot /Users/shub/Local\ Sites/reviewer-test/screenshots/01-dashboard.png
+agent-browser --session ws-abc123 screenshot /Users/jane/Local\ Sites/my-site/screenshots/01-dashboard.png
 
 # CORRECT — no warning:
-agent-browser --session ws-abc123 screenshot "/Users/shub/Local Sites/reviewer-test/screenshots/01-dashboard.png"
+agent-browser --session ws-abc123 screenshot "/Users/jane/Local Sites/my-site/screenshots/01-dashboard.png"
 ```
 
 This commonly affects local dev tools that keep sites under a `Local Sites` directory, and any path with spaces.

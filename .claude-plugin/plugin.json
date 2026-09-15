@@ -1,7 +1,7 @@
 {
   "name": "design-superskills",
   "description": "Design research and organization skills: capture any site or app flow into Figma reference rows, add review observations, synthesize notes, organize Figma screens, hand off to dev",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "author": {
     "name": "Shubhang Rajput"
   },

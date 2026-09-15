@@ -6,10 +6,10 @@ Read before drafting in Step 6 of `research-synthesis`. The document is an audit
 
 | Rule | Example |
 |---|---|
-| Third person, audit register | "Publishing creates the page automatically. No share prompt follows." |
-| No second person | Not "your note says". Write "the note on 02 add new event states". |
-| No Claude opinions or recommendations | No "take v4 forward", no "best fit", no "we suggest". |
-| Findings are observations | "Image sits low on the page", not "image is buried". |
+| Third person, audit register | "Saving publishes the page immediately. No confirmation step follows." |
+| No second person | Not "your note says". Write "the note on 02 checkout form". |
+| No Claude opinions or recommendations | No "take option B forward", no "best fit", no "we suggest". |
+| Findings are observations | "Primary button sits below the fold", not "button is hidden". |
 | Neutral about the current product | State what is present and what is not. Avoid "broken", "mess", "scavenger hunt". Quote the user's harsher words only inside the verbatim inventory. |
 | Short | Problem in three to four sentences. Findings one line each. Objective cards two sentences. |
 | No reasoning paragraphs | Do not explain why a section exists or how the list was derived. |

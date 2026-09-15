@@ -1,18 +1,17 @@
 # design-superskills
 
-Claude Code plugin for design research, Figma organization, and dev handoff — screenshots of any site or app flow placed into Figma as labelled reference rows, optional review observations and comparisons, research synthesis from canvas notes, Figma screen organization, dev annotations, MCP optimization, and GitHub issue generation from Figma designs.
+Claude Code plugin for design research, Figma organization, and dev handoff — screenshots of any site or app flow placed into Figma as labelled reference rows, optional review observations and comparisons, research synthesis from canvas notes, Figma screen organization, dev annotations, and GitHub issue generation from Figma designs.
 
 ## How it works
 
 Tell Claude Code what you want to reference or review — a competitor's onboarding, three booking apps' admin flows, a set of pricing pages. It launches a headless browser, walks the flow, captures screenshots, and places them into a Figma refs section as one labelled row per source, matching any row you already arranged by hand. If you ask for it, review agents read the screens and their observations land on the canvas next to each screen (or in an annotated HTML gallery), with a comparison table when there are several sources. When the notes are in place, a second skill turns them into a synthesis document.
 
-Six skills power this:
+Five skills power this:
 
 - **design-research** — Capture any site, web app, or local app flow and place the screenshots into a Figma refs section as labelled rows. Optional layers: review observations next to the screens (marketing lens for public sites, UX lens for apps and admin UIs), an annotated HTML gallery, and a comparison across sources
 - **research-synthesis** — The follow-up. Reads the observations on a refs section (sticky notes, dev notes, text notes, or observations gathered in chat) and turns them into one document: problem statement, objectives, shared patterns, current state, scope, directions, feature ideas, and a collapsed inventory linking back to every note
 - **design-organize** — Organize scattered Figma screens into labeled layouts with optional sub-sections
 - **design-annotations** — Add, reposition, or improve dev note components next to Figma screens
-- **mcp-optimize** — Create MCP-optimized versions of Figma screens for AI consumption
 - **dev-handoff** — Turn Figma design sections into GitHub issues for developer handoff, with template-aware formatting
 
 **WordPress plugin research** (WP-CLI, temporary admin user, plugin deactivation, first-run gates) is a separate skill, [wp-plugin-research](https://github.com/shub-rajput/wp-plugin-research-skill), that prepares the site and hands over to `design-research` for capture and Figma placement.
@@ -87,7 +86,6 @@ design-superskills/
 │   ├── research-synthesis/    # Canvas notes → problem, objectives, patterns, directions doc
 │   ├── design-organize/       # Figma screen organization + labeling
 │   ├── design-annotations/    # Dev note placement + copy improvement
-│   ├── mcp-optimize/          # MCP-optimized sections + asset extraction
 │   └── dev-handoff/           # Figma designs → GitHub issues for dev handoff
 ├── agents/
 │   ├── ux-reviewer.md         # UX analysis of app and admin UI screenshots
@@ -119,7 +117,7 @@ Skills are invoked by describing your intent in natural language.
 
 **Design research:**
 > "Put screenshots of these three admin flows into my Figma refs section, one row each"
-> "Capture wpforms.com's pricing flow as references, and add your observations next to the screens"
+> "Capture basecamp.com's pricing flow as references, and add your observations next to the screens"
 > "Compare the onboarding of these two apps"
 
 **Research synthesis:**
@@ -133,10 +131,6 @@ Skills are invoked by describing your intent in natural language.
 **Design annotations:**
 > "Add dev notes to the first 3 screens in this section"
 > "Improve the copy on existing dev notes"
-
-**MCP optimize:**
-> "Optimize these screens for MCP"
-> "Create lightweight dev-ready versions of these designs"
 
 **Dev handoff:**
 > "Hand off this Figma section to dev as GitHub issues"
@@ -165,7 +159,7 @@ When you choose the observations layer in design-research:
 
 ## Figma Setup
 
-Required for **design-research**, **research-synthesis**, **design-organize**, **design-annotations**, **mcp-optimize**, and **dev-handoff**.
+Required for **design-research**, **research-synthesis**, **design-organize**, **design-annotations**, and **dev-handoff**.
 
 These skills require the **remote Figma MCP server** — not the built-in Claude AI Figma integration.
 

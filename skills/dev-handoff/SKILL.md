@@ -86,7 +86,7 @@ Ask the user which they prefer:
 **Option 2 — Markdown output mode:**
 - Run the full workflow (Steps 1–6) as normal
 - In Step 7, write each issue as a markdown file to `./dev-handoff-issues/`
-- Name files: `01-update-integration-layout.md`, `02-zapier-integration.md`, etc.
+- Name files: `01-update-settings-layout.md`, `02-payments-integration.md`, etc.
 - Each file contains the full issue body ready to copy-paste into GitHub
 
 ## Step 1: Gather User Input
@@ -113,7 +113,7 @@ Ask the user directly in conversation — **do NOT use AskUserQuestion tool** fo
 Use `mcp__figma__get_metadata` on the provided node to discover the hierarchy.
 
 Parse the metadata to identify:
-- **Sections** — top-level groupings (e.g., "Zapier", "Google Calendar", "Credit Use")
+- **Sections** — top-level groupings (e.g., "Payments", "Notifications", "Account Settings")
 - **Frames** — individual screen designs within each section (e.g., "Not Connected", "Connected")
 - **Developer Note instances** — components named "Developer Note" containing implementation context
 - **Labels/text nodes** — screen labels at the section level (e.g., "Not Connected", "Connected > Error")
@@ -193,9 +193,9 @@ Red-flag scan:
 Categories to scan:
 - **"Consult X" / "Check with X"** references — who decides?
 - **"Placeholder" / "WIP" / "TBD" / "or similar"** labels — include or skip?
-- **Open decisions** — provider choices, URL fallbacks ("if there is none…"), credit allotments, scope boundaries ("we can look into having this on all pages")
+- **Open decisions** — provider choices, fallbacks when data is missing ("if none is set…"), usage limits, scope boundaries ("could apply to other pages later")
 - **Missing edge cases** — error states mentioned but not designed, empty states, fallback behavior when stored state is missing
-- **Dismissal/trigger conditions** — ambiguous triggers like "any successful email" — does that include adjacent flows?
+- **Dismissal/trigger conditions** — ambiguous triggers like "after any successful save" — does that include adjacent flows?
 - **Dependencies between issues** — does one block another?
 
 Quote the dev-note text verbatim for each finding so the user can confirm context.
@@ -241,8 +241,8 @@ If no, done. If yes, check for `FIGMA_TOKEN`:
    screenshots/
      01-layout/
        disabled-state.png
-       gmaps-not-connected.png
-     02-zapier/
+       empty-state.png
+     02-payments/
        not-connected.png
        connected.png
    ```

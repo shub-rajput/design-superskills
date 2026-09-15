@@ -123,5 +123,3 @@ Screenshot the section. Verify notes are positioned correctly, not overlapping, 
 > **Done.** Added/updated X dev notes across Y screens.
 >
 > Want to adjust anything?
->
-> **Next step:** Want me to optimize these screens for MCP? (I can invoke mcp-optimize)

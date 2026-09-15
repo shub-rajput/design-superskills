@@ -366,8 +366,8 @@ Fix any issues before proceeding.
 - Keep labels short (2-5 words)
 - Use `>` as a hierarchy separator for sub-views (e.g., "Share > Link")
 - Focus on the primary content, not UI chrome
-- For modals: name the modal (e.g., "Calendar Invitation Email")
-- For settings: name the category (e.g., "Limits & Buffers")
+- For modals: name the modal (e.g., "Delete Confirmation")
+- For settings: name the category (e.g., "Notifications")
 
 **Then, apply labels non-destructively.** If existing labels were found in Step 2, reuse them. Only create new text nodes for screens that don't have a matching label.
 
@@ -571,6 +571,6 @@ Show the user the final screenshot and summarize:
 >
 > Want to adjust spacing, grouping, or layout direction?
 >
-> **Next steps:** Want to add dev notes or optimize for MCP? (I can invoke design-annotations or mcp-optimize)
+> **Next step:** Want to add dev notes? (I can invoke design-annotations)
 
 If the user requests changes, re-run the relevant steps with updated values.

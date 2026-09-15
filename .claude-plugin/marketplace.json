@@ -8,7 +8,7 @@
       "name": "design-superskills",
       "source": "./",
       "description": "Design research: capture any site or app flow into Figma reference rows, add review observations, synthesize notes into a research doc, organize screens, hand off to dev",
-      "version": "2.0.0",
+      "version": "2.0.1",
       "author": {
         "name": "Shubhang Rajput"
       },
