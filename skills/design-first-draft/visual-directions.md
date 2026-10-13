@@ -31,7 +31,7 @@ Proposed styles must differ on at least three of palette, type, density and shap
 
 ## Showing the cards
 
-**Figma mode:** one `use_figma` call places a "Style options" frame next to the target section: per card, a title, the feel line, palette chips with role names, a type specimen (display and body), and a mini component row (primary button, input, card) in that style. Screenshot it and show the user. Delete it after the pick, or keep it if the user wants the record.
+**Figma mode:** one `use_figma` call places a "Style options" frame next to the parent section (created at the end of Step 3), outside it: per card, a title, the feel line, palette chips with role names, a type specimen (display and body), and a mini component row (primary button, input, card) in that style. Screenshot it and show the user. Delete it after the pick, or keep it if the user wants the record.
 
 **Code mode:** one `first-drafts/style-options.html` with the same content per card (cards side by side, wrapping on narrow screens), screenshotted at 1440 wide so the cards sit next to each other.
 
@@ -39,7 +39,7 @@ Ask one question: which card, or what to change. Apply edits to the card, not to
 
 ## Draft tokens
 
-**Figma:** a local variable collection named "Draft tokens".
+**Figma:** a local variable collection named "Draft tokens · <Style name>", one per style. A new collection, rather than a new mode on an earlier one, means nodes resolve to the right style without an explicit mode.
 
 | Group | Variables |
 |---|---|
@@ -47,9 +47,9 @@ Ask one question: which card, or what to change. Apply edits to the card, not to
 | `space/` | `1` to `8` from the density scale |
 | `radius/` | `sm`, `md`, `lg` |
 
-Plus local text styles grouped under `Draft/` so they never clash with the file's own styles: `Draft/Display`, `Draft/Heading`, `Draft/Body`, `Draft/Body small`, `Draft/Label`, `Draft/Button`. Check exact style names with `figma.listAvailableFontsAsync()` first (many Google families use "SemiBold", Inter uses "Semi Bold"), then load each font before creating its style. If a "Draft tokens" collection already exists from an earlier run, reuse it or add a mode; do not create a second one.
+Plus local text styles named `Draft/<Style name>/<Role>` so they never clash with the file's own styles or an earlier run's (text styles have no modes): roles `Display`, `Heading`, `Body`, `Body small`, `Label`, `Button`. Check exact style names with `figma.listAvailableFontsAsync()` first (many Google families use "SemiBold", Inter uses "Semi Bold"), then load each font before creating its style. If a collection for the same style already exists from an earlier run, reuse it.
 
-The collection and styles are file-level additions. In a file that holds real product work, say so in Step 3 and get the user's okay; in a scratch or playground file, go ahead. Per-direction styles (first row of the table above) get one mode per direction in the same collection, named after the direction, and each direction's section sets its explicit mode.
+The collection and styles are file-level additions. In a file that holds real product work, say so in Step 3 and get the user's okay; in a scratch or playground file, go ahead. Per-direction styles (first row of the table above) are the one case for modes: one collection, one mode per direction, named after the direction. Set the explicit mode on each direction's section, the kit section and the kit components, and tell builders in the brief to set it on every frame they create; a wrong mode shows as a frame rendering in another direction's colours.
 
 **Code:** `first-drafts/tokens.css` with the same names as custom properties on `:root` (`--color-bg`, `--space-4`, `--radius-md`, `--font-display`), the Google Fonts link noted at the top for pages to include.
 
@@ -59,7 +59,12 @@ Record the collection id, variable names and text-style ids (or the CSS path) in
 
 Before Step 6, build one small shared kit so every direction uses the same pieces: primary and secondary button, text input, select, checkbox, toggle, card, nav item, badge, notice. Each is an auto-layout component bound to the draft tokens, with text properties for its labels. Input and select get a `State` variant (Empty with muted placeholder text, Filled with text colour), because every direction draws both a start and a filled frame. The nav item doubles as a chip, so its Default state has a border; an unselected chip with no fill and no border reads as plain text.
 
-**Figma:** a "Draft kit" frame next to the target section (outside every direction's section). Record each component id and its `componentPropertyDefinitions` keys in the brief's component table, the same way a real library is recorded.
+Three recipe rules that prevent known defects:
+- `addComponentProperty` on a component set rewrites every variant's bound text to the property default. Set each variant's text afterwards with a per-variant override, or accept one shared default and say so on the kit page; otherwise the kit page shows every badge with the same wording.
+- Notices and other message containers hug their height, with the text set to `textAutoResize = 'HEIGHT'` and filling the width. A fixed height clips two-line messages.
+- Variants that differ only in emphasis share one box model. A Selected state with a fill gets a stroke in its own fill colour, so it measures the same as the bordered Default.
+
+**Figma:** a "Draft kit" frame next to the parent section (outside every direction's section). Record each component id and its `componentPropertyDefinitions` keys in the brief's component table, the same way a real library is recorded.
 
 **Code:** `first-drafts/kit.css` with one class per piece built on the custom properties, plus `first-drafts/kit.html` showing each one.
 

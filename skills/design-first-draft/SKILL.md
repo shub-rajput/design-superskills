@@ -20,17 +20,17 @@ The orchestrator (you) owns the brief, the critique and the summary. Builders (s
 | **0** | Prerequisites | Figma MCP; figma-use |
 | **1** | Get the input | Synthesis, or brief plus interview |
 | **2** | Design-system discovery | You look first, in Figma and code |
-| **3** | One input question | Confirm DS or pick a style; directions, mode, section, content, subagents or inline |
+| **3** | One input question | Approve the brief (brief path); confirm DS or pick a style; directions, mode, section, subagents or inline |
 | **4** | Visual direction (no DS only) | Shared style, or the synthesis's per-direction lines |
 | **5** | Parity check (optional) | Only when redesigning an existing screen |
 | **6** | Brief and sections | Distinctness rule; one sample record |
-| **7** | Build | Subagents in pairs, or inline one at a time |
+| **7** | Build | Subagents two at a time, or inline one at a time |
 | **8** | Critique rounds | You screenshot and judge; one numbered message per round |
 | **9** | QA sweep and summary | No ranking, no recommendation |
 
 ## BEFORE YOU START: Create Tasks
 
-Use TaskCreate for each step. Mark `in_progress` when starting and `completed` when done.
+Use the task tool if one is available (TaskCreate or TodoWrite): one task per step, marked `in_progress` when starting and `completed` when done. Without one, track the steps in your replies.
 
 1. "Step 0: Prerequisites"
 2. "Step 1: Get the input"
@@ -63,7 +63,7 @@ Accept whichever the user has:
 
 ### Brief interview (brief path only)
 
-Read the brief first. Ask only what it does not answer, one question per message, multiple choice where possible. Continue until all of these are pinned down:
+Read the brief first, and start Step 2 in parallel: discovery is read-only, and what it finds (an existing system, an earlier run's draft tokens) can change what is worth asking. Ask only what the brief does not answer. Ask one question per message, multiple choice where possible, only for gaps that block writing the brief; everything else waits for the Step 3 question. Pin down:
 
 1. **Problem**: three to four sentences; the first names the core friction, the last names what is out of scope.
 2. **Objectives**: two to four, the user's primary objective first.
@@ -73,7 +73,7 @@ Read the brief first. Ask only what it does not answer, one question per message
 6. **Platform**: where the screens live (phone, desktop web, inside an existing app shell) and the frame width (390, 1440, the app's content width).
 7. **Existing product**: whether this replaces a screen that exists today (feeds Step 5).
 
-Write `research/<slug>-brief.md` as Markdown with the `research-synthesis` section headings that apply: Problem, Objectives, Scope (v1, deferred, avoid), Directions (each with name, references, summary, open questions), Open decisions (platform first), Visual direction (if any). Leave out the sections that need canvas notes (shared patterns, current state, note inventory). Show it and wait for approval. From Step 2 on, a synthesis and an approved brief are treated the same.
+Write `<slug>-brief.md` (in the product repo's `research/` folder when the working directory is the product, otherwise in the scratchpad; print the path) as Markdown with the `research-synthesis` section headings that apply: Problem, Objectives, Scope (v1, deferred, avoid), Directions (each with name, references, summary, open questions), Open decisions (platform first), Visual direction (if any). Leave out the sections that need canvas notes (shared patterns, current state, note inventory). Show it. Approving the brief, including any directions you proposed, is the first question of Step 3. Once approved, a synthesis and a brief are treated the same.
 
 ## Step 2: Design-System Discovery
 
@@ -83,16 +83,19 @@ Read `design-system-discovery.md`. Probe before asking anything: the target Figm
 
 One AskUserQuestion with up to four questions. Ask only what the request and the input did not answer; restate the rest in the plan.
 
+- **Brief approval (brief path only).** "Build from this brief and these directions, in this order?" Options: approve / edit the directions or order / edit the brief. This replaces a separate approval round and the directions question below, so the total stays at four.
 - **Design system or style.** If Step 2 found one: "I found `<name>` (N components, M colour variables, fonts `<fonts>`). Build with it?" Options: use it / use a different one (name or link) / ignore it and pick a style. If nothing was found: "No design system found in the file or the codebase. Is there a specific style you want me to try?" Options: propose two or three styles / match a reference (URL, Figma frame, screenshot) / neutral wireframe grade / I will describe it. If the synthesis carries visual direction lines (shared or per direction), offer those first.
-- **Directions and priority.** Which to build, in what order. Priority decides dispatch order, not effort.
+- **Directions and priority (synthesis path).** Which to build, in what order. Priority decides dispatch order, not effort.
 - **Mode, target and platform.** Figma (default; the target section URL) or Code first (`code-mode.md`; the output folder), with optional capture into Figma. Platform and frame width, unless the input already states them.
-- **Execution.** Subagents (recommended: one builder per direction, launched in pairs) or inline (you build one direction at a time; cheaper, slower). State the models: Opus for builders, Sonnet for mechanical steps, unless the user says otherwise.
+- **Execution.** Subagents (recommended: one builder per direction, two running at a time) or inline (you build one direction at a time; cheaper, slower). State the models and let the user pick: Opus builders (most polish, roughly 6 to 9 minutes and 110k to 130k tokens per direction) or Sonnet builders (draft grade, roughly 2 to 4 minutes and 80k to 95k tokens per direction). Sonnet for mechanical steps either way.
 
 Fold in only when needed: the existing screen's repo path or frame link (Step 5), and sample content (the user's, or you propose one realistic record).
 
 **Open decisions that change the screens** (full page or inside the app, login or guest, a step or a setting): when a direction's own text answers one, follow it; otherwise pick the answer the input leans toward and list it in the plan as an assumption. Directions may answer the same decision differently; that is often what makes them distinct.
 
 Print the plan (directions in order, DS or style, mode, target, platform and frame width, sample content, assumed answers to open decisions, execution and models, estimated frames). The user can correct any line. If Step 4 applies, it is the only remaining gate before building; otherwise start.
+
+**Figma:** once the plan stands, use the section the user linked, or create the empty parent section now in a clear spot on the target page (name it after the flow), so the style options and draft kit in Step 4 have something to sit next to. Style it as in Step 6.
 
 ## Step 4: Visual Direction (Only When There Is No Design System)
 
@@ -103,7 +106,7 @@ Skip when the user confirmed a design system or chose neutral wireframe grade. O
 - **Otherwise:** propose two or three shared styles as swatch cards, the user picks one, and every direction uses it. Directions then differ by layout, not by paint.
 - **Match a reference:** extract palette, type, density and radius from it into one style card and confirm it.
 
-Turn the chosen style into draft tokens (a local "Draft tokens" variable collection plus text styles in Figma, or `first-drafts/tokens.css` in code), then build the small shared draft kit (buttons, inputs, card, nav item, badge, notice) outside every direction's section. Builders bind to the tokens, use kit instances, and never type raw hex.
+Turn the chosen style into draft tokens (a local "Draft tokens · <Style name>" variable collection plus `Draft/<Style name>/*` text styles in Figma, or `first-drafts/tokens.css` in code), then build the small shared draft kit (buttons, inputs, card, nav item, badge, notice) outside every direction's section. Builders bind to the tokens, use kit instances, and never type raw hex.
 
 ## Step 5: Parity Check (Optional)
 
@@ -117,11 +120,15 @@ Run only when the directions redesign a screen that exists today and its code (r
 
 Write `<scratch>/direction-brief.md` from `brief-template.md`: objectives with their on-screen meaning, out of scope, the parity rule (if Step 5 ran), the directions verbatim with the distinctness rule, one sample record, target facts, the component, style and token tables (from the design system or the draft tokens), build rules, report format, and the relevant lines of `figma-gotchas.md`.
 
-**Figma:** one `use_figma` call creates one sub-section per direction inside the target section, named by content and number ("Direction v2 · Side rail checklist"), with a title matching the file's label style and generous initial size. Record the ids in the brief. Builders never write outside their own section.
+**Figma:** one `use_figma` call creates one sub-section per direction inside the parent section, named by content and number ("Direction v2 · Side rail checklist"). Record the ids in the brief. Builders never write outside their own section.
+
+- **Look.** Match the file's existing section style when it has one (fill, stroke, title font and colour). Otherwise give the parent a light neutral fill and each sub-section a white fill with a 1px light grey stroke, so directions read as cards. Figma's default section fill is dark grey: never leave it, and pick title and label colours that contrast with whichever fill is used. Record the fills and label colour in the brief.
+- **Size.** Width = frames x frame width + (frames - 1) x 80 + 200; height = tallest expected frame + 300. Builders tighten their own sub-section; the orchestrator resizes the parent in Step 9.
+- **Labels.** Figma shows frame names above frames inside a section, but exports and screenshots do not. Add TEXT labels above frames only when the file's existing frames have them; otherwise leave them out.
 
 **Code:** one folder per direction, `first-drafts/<direction-slug>/`.
 
-Frames per direction: three to five. Required: a start (empty) state, a filled state, the state that shows this direction's mechanism, and the finishing state (publish, confirm, share, done).
+Frames per direction: three to six. Required: a start (empty) state, a filled state, the state that shows this direction's mechanism, and the finishing state (publish, confirm, share, done). Each objective that needs its own state (cancel, waitlist, error) adds a frame, up to six. A direction may rename the required states when its mechanism changes them (a remembered identity replaces the filled form; first visit and returning visit replace start). One moment per frame: a frame never shows a call to action next to the result of taking it.
 
 ## Step 7: Build
 
@@ -141,7 +148,7 @@ Resilience: an agent stopped by a rate limit is resumed with "continue where you
 
 ## Step 9: QA Sweep and Summary
 
-Run the QA sweep from `critique-checklist.md` on each section or folder. Fix one-line stragglers yourself. Tighten each Figma section to content plus 100px and take one overview screenshot of the target section.
+Run the QA sweep from `critique-checklist.md` on each section or folder. Fix one-line stragglers yourself. Tighten each Figma sub-section to content plus 100px, then resize the parent section to its sub-sections plus 100px, and take one overview screenshot of the parent.
 
 Final message in the shape given in `critique-checklist.md`: directions and frames, design system or draft tokens used, parity items applied (or "parity check skipped"), QA results, design-system gaps, open questions. No ranking, no recommendation. If the user asks which direction is best, answer in chat, never in the deliverable.
 
@@ -152,7 +159,8 @@ Final message in the shape given in `critique-checklist.md`: directions and fram
 | Asking the user which design system to use before looking | Step 2 first. Report what was found and ask for confirmation. |
 | Inventing a visual style when a design system exists | Use the system. Styles are proposed only when nothing was found or the user declined it. |
 | A different visual style per direction by default | One shared style, so directions compare by layout. Per-direction styles only when the synthesis defines them and the user accepts. |
-| Building from an unapproved interview brief | The brief path ends with the user approving `research/<slug>-brief.md`. |
+| Building from an unapproved interview brief | Brief approval is the first question of Step 3; nothing is built before it. |
+| Leaving sections in Figma's default dark grey | Match the file's section style, or light parent and white sub-sections (Step 6). |
 | Launching builders without `model` | They inherit the parent model. Set it explicitly and state it in the plan. |
 | Letting builders self-certify | The orchestrator screenshots and critiques. Builders report. |
 | Building inside the user's stub frames or one shared area | One sub-section or folder per direction; builders never leave it. |

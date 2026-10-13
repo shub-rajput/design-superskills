@@ -57,7 +57,8 @@ These are the user's own definitions. Directions must look and behave clearly di
 
 *Figma mode:*
 - File key `<fileKey>`. Page "<page name>" id `<pageId>`. Every `use_figma` call starts with `await figma.setCurrentPageAsync(await figma.getNodeByIdAsync('<pageId>'))`.
-- Parent section `<sectionId>`. Your section id is in your task. Place a label (TEXT matching `<labelNodeId>`: <font> <size> <colour>) above each frame; frames start at x = <n>, y >= <n> inside your section, <gap>px apart.
+- Parent section `<sectionId>`. Your section id is in your task; its fill is `<section fill>`, so text you place on the section uses `<label colour>`. Frames start at x = <n>, y >= <n> inside your section, <gap>px apart.
+- Labels above frames: <"none, Figma shows frame names" | "TEXT matching `<labelNodeId>`: <font> <size> <colour>, identical to the frame name">.
 - Screen frames <width> wide. Background bound to `<surface token>`.
 - Shell frame to clone for in-product screens: `<shellId>` (<what it contains>), or "none, full-page screens".
 - Existing screens for visual language (do not copy layout): `<frameIds>`.
@@ -100,14 +101,15 @@ Load each font before any text edit. Apply with `await node.setTextStyleIdAsync(
 
 ## Tokens
 
-Collection `<name>` (`<id>`), or CSS file `<path>`. Names to use: `<color/*>`, `<space/*>`, `<radius/*>`. Bind colours with `figma.variables.setBoundVariableForPaint(paint, 'color', variable)` and reassign fills. Never type a raw hex for anything that has a token. Gradient stops cannot be bound; note them in the report.
+Collection `<name>` (`<id>`), mode `<mode name>` (`<modeId>`; only when the collection has more than one mode: set it on every frame you create with `setExplicitVariableModeForCollection`, or the frame renders in another style's colours), or CSS file `<path>`. Names to use: `<color/*>`, `<space/*>`, `<radius/*>`. Bind colours with `figma.variables.setBoundVariableForPaint(paint, 'color', variable)` and reassign fills. Never type a raw hex for anything that has a token. Gradient stops cannot be bound; note them in the report.
 
 ## Build rules
 
 - Load `figma:figma-use` before your first `use_figma` call. Small steps (under 10 operations per call), `return` created node ids, `await` everything, load fonts before text edits, set `layoutSizingHorizontal = 'FILL'` only after `appendChild`.
 - Auto-layout everywhere. Instances over redraws. Do not detach instances.
 - Copy: sentence case, plain language, no em-dashes.
-- Frames: `<Direction> / 00 Start`, `/ 01 Filled`, `/ 02 <mechanism state>`, `/ 03 <finishing state>`. Three minimum, five maximum. Start, filled and finishing states are required.
+- Frames: `<Direction> / 00 Start`, `/ 01 Filled`, `/ 02 <mechanism state>`, `/ 03 <finishing state>`. Three minimum, six maximum. Start, filled and finishing states are required; an objective that needs its own state (cancel, waitlist, error) gets its own frame, and a direction may rename a required state its mechanism changes.
+- One moment per frame. A frame never shows a call to action next to the result of taking it.
 - Screenshot after each frame (`await frame.screenshot()`, or the browser in code mode) and fix clipped text, overlaps and off-token colours before moving on. Leave no `placeholder = true`.
 - If a component misbehaves (font errors, missing props), fall back to a token-styled auto-layout frame and say so in the report.
 

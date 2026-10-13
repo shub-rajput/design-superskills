@@ -1,5 +1,15 @@
 # Changelog
 
+## 2.1.1
+
+- `design-first-draft`, from a field test on the brief path:
+  - Fewer gates: brief approval, including proposed directions, is the first question of the Step 3 ask; discovery runs alongside the interview.
+  - Sections match the file's section style, or use a light parent with white direction cards instead of Figma's default dark grey. A size formula, and canvas labels only when the file already uses them.
+  - Draft tokens get one collection per style (`Draft tokens · <Style>`, `Draft/<Style>/*` text styles), so a second run no longer collides with the first.
+  - Draft kit recipe fixes: per-variant text after adding a text property, notices that hug their height, and matching box models across states.
+  - Up to six frames per direction, one moment per frame, and states can be renamed when a direction's mechanism changes them.
+  - Opus or Sonnet builders offered with time and token estimates. The brief is written to the scratchpad when the working directory is not the product. Works without a task tool.
+
 ## 2.1.0
 
 - New `design-first-draft` skill: builds first-draft screens for every direction in a research synthesis, in Figma or as HTML. Accepts a project brief instead, interviewing until problem, objectives, scope and directions are clear (and proposing directions for approval when there are none). Discovers the design system in the Figma file, enabled libraries and the codebase before asking, confirms it with the user, and proposes shared visual styles (draft tokens plus a draft kit) only when none exists. Subagent or inline builds, orchestrator critique rounds, QA sweep, optional parity check when redesigning an existing screen. Never ranks directions.

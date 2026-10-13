@@ -29,7 +29,7 @@ Read before writing the brief and paste the relevant lines into it.
 
 - Icon-font glyphs typed as literal private-use characters get stripped in transit. Write them with `String.fromCharCode(0xf0c7)` style calls, after loading the icon font.
 - Before editing text that mixes fonts (cloned shells, menu items), load every segment's font: `for (const seg of t.getStyledTextSegments(['fontName'])) await figma.loadFontAsync(seg.fontName)`.
-- Labels above frames follow the file's label convention (read an existing label's `fontName`, `fontSize`, `fills`). Inside frames, only the design system's or style card's fonts.
+- Labels above frames follow the file's label convention (read an existing label's `fontName`, `fontSize`, `fills`). The colour must still contrast with the section fill it sits on; Figma's default section fill is dark grey. Inside frames, only the design system's or style card's fonts.
 - Component styles may transform text (uppercase toggles, for example). That is not a bug.
 
 ## Layout
@@ -47,5 +47,5 @@ Read before writing the brief and paste the relevant lines into it.
 ## Naming and placement
 
 - The user's own numbered labels on the canvas may disagree with the synthesis numbering. Name direction sections by content and number ("Direction v2 · Side rail checklist").
-- Frame names `<Direction> / 0N <State>`; label text identical to the frame name.
+- Frame names `<Direction> / 0N <State>`. Separate TEXT labels only when the file's existing frames have them (Figma already shows frame names inside sections, exports do not); when used, label text is identical to the frame name.
 - One sub-section per direction inside the target section; builders never write outside theirs. The draft kit and style options sit outside every direction's section.
