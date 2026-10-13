@@ -1,11 +1,3 @@
-<img width="720" height="405" alt="your-design" src="https://github.com/user-attachments/assets/ca5bd9a6-fea7-418a-b60d-7bffe539b6a7" />
-<img width="720" height="405" alt="research-synthesis" src="https://github.com/user-attachments/assets/196d48e7-9922-4c35-8cc2-2c2fc69c60b5" />
-<img width="720" height="405" alt="outro" src="https://github.com/user-attachments/assets/3fd85117-1d3f-4424-ac1e-ada283878ff5" />
-<img width="720" height="405" alt="intro" src="https://github.com/user-attachments/assets/8ea5a06c-3aae-4b5b-9970-9d5cc894200a" />
-<img width="720" height="405" alt="dev-handoff" src="https://github.com/user-attachments/assets/0d63b5dc-5875-4549-b1f5-b910824e4b4e" />
-<img width="720" height="405" alt="design-research" src="https://github.com/user-attachments/assets/28209716-d16a-45c8-b98d-38ce8eeb5576" />
-<img width="720" height="405" alt="design-organize" src="https://github.com/user-attachments/assets/d7190af4-8d2d-4567-b72d-07204b3b1474" />
-<img width="720" height="405" alt="design-annotations" src="https://github.com/user-attachments/assets/822e1abe-d1a8-4e7e-a000-e859b171f380" />
 <p align="center">
   <img src="assets/icon.png" width="96" alt="design-superskills icon: a pixel pencil held up over a pixel Claude">
 </p>
@@ -23,7 +15,7 @@
 </p>
 
 <p align="center">
-  <img src="assets/readme/intro.gif" width="720" alt="Design is problem solving. Then comes the meta work. Let your agent handle it.">
+  <img src="https://github.com/user-attachments/assets/8ea5a06c-3aae-4b5b-9970-9d5cc894200a" width="720" alt="Design is problem solving. Then comes the meta work. Let your agent handle it.">
 </p>
 
 Design is problem solving. Around it sits a pile of meta work: screenshotting competitors, pasting them into Figma and labelling every row, turning a wall of sticky notes into something you can share, tidying frames into sections, placing dev notes, writing a ticket for every screen.
@@ -49,7 +41,7 @@ You don't call skills by name. Describe what you want in plain words and Claude 
 
 **You pick the references. Claude screenshots them into Figma.**
 
-<img src="assets/readme/design-research.gif" width="720" alt="Claude opens two reference sites, captures four onboarding screens and places them in a Refs row in Figma">
+<img src="https://github.com/user-attachments/assets/28209716-d16a-45c8-b98d-38ce8eeb5576" width="720" alt="Claude opens two reference sites, captures four onboarding screens and places them in a Refs row in Figma">
 
 Name the sites or apps and the flow you care about. Claude opens them in a headless browser, walks the flow, captures each screen and places one labelled row per source in your Figma refs section, matching any rows you already arranged by hand.
 
@@ -78,7 +70,7 @@ Reviewing a WordPress plugin? [wp-plugin-research](https://github.com/shub-rajpu
 
 **You leave notes on the refs. Claude turns them into directions.**
 
-<img src="assets/readme/research-synthesis.gif" width="720" alt="Sticky notes land on four reference screens, then Claude writes a research board with problem, objectives and directions">
+<img src="https://github.com/user-attachments/assets/196d48e7-9922-4c35-8cc2-2c2fc69c60b5" width="720" alt="Sticky notes land on four reference screens, then Claude writes a research board with problem, objectives and directions">
 
 Stick notes on your references the way you already do. Claude reads every sticky, dev note and text note in the section (or observations gathered in chat) and writes one document: problem statement, objectives, shared patterns, current state, scope, directions and feature ideas.
 
@@ -102,13 +94,13 @@ It looks for your design system in Figma and in code and confirms it with you fi
 
 **No skill here. This is the part you keep.**
 
-<img src="assets/readme/your-design.gif" width="720" alt="The research board sits next to a Welcome screen while the designer draws an email field and snaps the Continue button into place">
+<img src="https://github.com/user-attachments/assets/ca5bd9a6-fea7-418a-b60d-7bffe539b6a7" width="720" alt="The research board sits next to a Welcome screen while the designer draws an email field and snaps the Continue button into place">
 
 ### design-organize
 
 **Claude sorts your screens into labelled sections.**
 
-<img src="assets/readme/design-organize.gif" width="720" alt="Claude sweeps through eight messy screens and settles them into labelled Signup and Settings sections">
+<img src="https://github.com/user-attachments/assets/d7190af4-8d2d-4567-b72d-07204b3b1474" width="720" alt="Claude sweeps through eight messy screens and settles them into labelled Signup and Settings sections">
 
 Point at a messy page or section. Claude groups the screens by flow into labelled sections, names every screen and lays them out in clean rows. It can also re-format an existing layout or move screens between sections.
 
@@ -119,7 +111,7 @@ Point at a messy page or section. Claude groups the screens by flow into labelle
 
 **You drop notes anywhere. Claude places each by its screen.**
 
-<img src="assets/readme/design-annotations.gif" width="720" alt="Five dev notes dropped loosely on the canvas, then Claude makes room and places each note under its screen">
+<img src="https://github.com/user-attachments/assets/822e1abe-d1a8-4e7e-a000-e859b171f380" width="720" alt="Five dev notes dropped loosely on the canvas, then Claude makes room and places each note under its screen">
 
 Write dev notes wherever is quickest. Claude makes room under each screen and moves every note next to the screen it belongs to, using your design system's note component or a default template. It can also tighten the copy of existing notes so developers get behaviour, states and data sources, not guesswork.
 
@@ -131,7 +123,7 @@ Write dev notes wherever is quickest. Claude makes room under each screen and mo
 
 **Claude turns each screen and its notes into a GitHub issue.**
 
-<img src="assets/readme/dev-handoff.gif" width="720" alt="A GitHub issues panel slides in beside the Signup section, with one issue per screen linked to its notes">
+<img src="https://github.com/user-attachments/assets/0d63b5dc-5875-4549-b1f5-b910824e4b4e" width="720" alt="A GitHub issues panel slides in beside the Signup section, with one issue per screen linked to its notes">
 
 Point at a Figma section. Claude reads the screens and their dev notes, asks how you want the issues split, detects the issue type, and opens them on GitHub using your repo's issue templates (bug report, enhancement, new feature) and Figma links. Set `FIGMA_TOKEN` to attach frame PNGs too.
 
@@ -141,7 +133,7 @@ Point at a Figma section. Claude reads the screens and their dev notes, asks how
 ---
 
 <p align="center">
-  <img src="assets/readme/outro.gif" width="720" alt="A checklist of grunt work handled by each skill, then 'More time to design what matters.' and the install command">
+  <img src="https://github.com/user-attachments/assets/3fd85117-1d3f-4424-ac1e-ada283878ff5" width="720" alt="A checklist of grunt work handled by each skill, then 'More time to design what matters.' and the install command">
 </p>
 
 ---
