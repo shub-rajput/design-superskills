@@ -1,3 +1,11 @@
+<img width="720" height="405" alt="your-design" src="https://github.com/user-attachments/assets/ca5bd9a6-fea7-418a-b60d-7bffe539b6a7" />
+<img width="720" height="405" alt="research-synthesis" src="https://github.com/user-attachments/assets/196d48e7-9922-4c35-8cc2-2c2fc69c60b5" />
+<img width="720" height="405" alt="outro" src="https://github.com/user-attachments/assets/3fd85117-1d3f-4424-ac1e-ada283878ff5" />
+<img width="720" height="405" alt="intro" src="https://github.com/user-attachments/assets/8ea5a06c-3aae-4b5b-9970-9d5cc894200a" />
+<img width="720" height="405" alt="dev-handoff" src="https://github.com/user-attachments/assets/0d63b5dc-5875-4549-b1f5-b910824e4b4e" />
+<img width="720" height="405" alt="design-research" src="https://github.com/user-attachments/assets/28209716-d16a-45c8-b98d-38ce8eeb5576" />
+<img width="720" height="405" alt="design-organize" src="https://github.com/user-attachments/assets/d7190af4-8d2d-4567-b72d-07204b3b1474" />
+<img width="720" height="405" alt="design-annotations" src="https://github.com/user-attachments/assets/822e1abe-d1a8-4e7e-a000-e859b171f380" />
 <p align="center">
   <img src="assets/icon.png" width="96" alt="design-superskills icon: a pixel pencil held up over a pixel Claude">
 </p>
