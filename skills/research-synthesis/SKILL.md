@@ -131,7 +131,7 @@ Section order:
 3. Shared patterns (table: pattern, who does it, current product today, neutral status)
 4. Current state (one line per finding, each with a source chip)
 5. Scope: proposed v1, patterns to avoid
-6. Directions (one card per direction stub: summary from the user's text, source references, open questions, optional schematic wireframe)
+6. Directions (one card per direction stub: summary from the user's text, source references, open questions, optional visual direction, optional schematic wireframe)
 7. Open decisions
 8. Feature ideas, separate track (grouped; enhancements and new features, not flow work)
 9. All notes (collapsed by default, grouped by source, verbatim text, screen label, deep link)
@@ -142,6 +142,8 @@ Every claim carries a chip that deep-links to the source note: `https://www.figm
 **Statuses for shared patterns.** Use only: `Not present`, `Present, weaker`, `Present`, `Open question`, `Deferred`. A pattern the current product has in some form is `Present, weaker`, never `Not present`.
 
 **Directions.** Summarise each from the user's own stub text. List the open questions the stub raises. A schematic wireframe (rectangles only, drawn inline as SVG using the page's theme tokens) is optional and must be labelled schematic. No scores, no bars, no fit matrix, no recommendation, no ordering by preference.
+
+**Visual direction (optional).** Add a one-line visual direction to a card only when the user asks for one, or when the stub or notes talk about look and feel (palette, type, density, mood, a reference product's style). Write it from the user's words with refs, for example "Calm and spacious, neutral greys with one accent, after <competitor>". If the user wants one shared style for all directions, record it once under Scope as "Visual direction" instead. `design-first-draft` reads these lines when no design system exists.
 
 **Claims about the current product.** Notes are the user's impressions and can be wrong. Where a note asserts something about the product's behaviour, phrase it as the note's observation, and flag it in the review pass if the screens contradict it.
 
@@ -182,4 +184,4 @@ After each round, edit the data structure, rebuild both outputs, republish to th
 ## Chaining
 
 - **Before:** `design-research` (screens on the canvas, optional observations next to them), `design-annotations` (if the user wants dev-note style observations placed next to screens instead of stickies).
-- **After:** the directions section is the brief for design exploration; the feature ideas section is a backlog seed for the user's task tracker.
+- **After:** `design-first-draft` builds first-draft screens for each direction (the directions section is its brief); the feature ideas section is a backlog seed for the user's task tracker.

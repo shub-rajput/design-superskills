@@ -1,5 +1,11 @@
 # Changelog
 
+## 2.1.0
+
+- New `design-first-draft` skill: builds first-draft screens for every direction in a research synthesis, in Figma or as HTML. Accepts a project brief instead, interviewing until problem, objectives, scope and directions are clear (and proposing directions for approval when there are none). Discovers the design system in the Figma file, enabled libraries and the codebase before asking, confirms it with the user, and proposes shared visual styles (draft tokens plus a draft kit) only when none exists. Subagent or inline builds, orchestrator critique rounds, QA sweep, optional parity check when redesigning an existing screen. Never ranks directions.
+- `research-synthesis`: direction cards can carry an optional visual direction line, and Scope an optional shared visual direction, written only when the user asks or the notes cover look and feel.
+- README rewritten for designers: what each skill takes off your plate (you vs Claude), a GIF per skill cut from the showreel, and the app icon. GIFs are hosted as GitHub attachments, not in the repo.
+
 ## 2.0.1
 
 - Removed the `mcp-optimize` skill. `design-organize` and `design-annotations` no longer offer it as a next step.

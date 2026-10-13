@@ -29,7 +29,8 @@ patterns:    [{ pattern, who, productToday, status, refs[] }]
 findings:    [{ text, refs[] }]
 scopeNow:    [{ text, refs[] }]
 avoid:       [{ text, refs[] }]
-directions:  [{ tag, name, after, summary, openQuestions[], wireframe? }]
+visual?:     { text, refs[] }                                 optional, one shared visual direction
+directions:  [{ tag, name, after, summary, openQuestions[], visual?, wireframe? }]
 questions:   [{ question, note, refs[] }]
 features:    [{ group, items: [{ text, refs[] }] }]
 gaps:        [{ title, body }]
@@ -56,8 +57,8 @@ Never `Gap`, `Missing`, `Table stakes`, or any label that reads as a verdict.
 3. **Objectives**: two to four cards, the user's primary objective first. Optional "Keep in view while designing" list for things that shape the layout but are not objectives.
 4. **Shared patterns**: table with columns Pattern, Who, `<product>` today, Status. "Who" names sources; never "everyone".
 5. **Current state**: one line per finding, source chip on each.
-6. **Scope**: "Proposed v1 scope" list, "Patterns to avoid" list (competitor mistakes, each naming the source).
-7. **Directions**: one card per direction stub. Card holds: tag (v1, v2, Option A), name, "After <references>", summary rewritten from the user's stub text without judgement, "Open" list of questions the stub raises, optional schematic wireframe. Intro line: "Summaries from the direction notes on the board. Wireframes are schematic." No matrix.
+6. **Scope**: "Proposed v1 scope" list, "Patterns to avoid" list (competitor mistakes, each naming the source), optional "Visual direction" line when one shared style applies to every direction.
+7. **Directions**: one card per direction stub. Card holds: tag (v1, v2, Option A), name, "After <references>", summary rewritten from the user's stub text without judgement, "Open" list of questions the stub raises, optional "Visual" line (only when the user asked for it or the notes cover look and feel), optional schematic wireframe. Intro line: "Summaries from the direction notes on the board. Wireframes are schematic." No matrix.
 8. **Open decisions**: questions the directions depend on, each with a one-line note and refs.
 9. **Feature ideas, separate track**: grouped lists of enhancements and new features surfaced by the notes. Intro line states these are not part of the flow work and can be logged as a backlog.
 10. **All notes**: `<details>` per source, closed by default. Each note: colour swatch, verbatim text (with `[duplicate]` or `[corrected: …]` markers where agreed), screen label in mono, "Open" link to the note.
