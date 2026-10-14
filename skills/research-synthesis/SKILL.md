@@ -1,6 +1,6 @@
 ---
 name: research-synthesis
-description: Use when a Figma section holds reference screenshots (competitors, current product, other references) with or without notes and the user wants them turned into one readable document: problem statement, objectives, shared patterns, current state, scope, directions. Triggers include "actionable pointers", "synthesize my research", "problem statement and objectives", "one place to look at all these notes", "turn my stickies into a doc", or a refs section link plus a request for directions.
+description: 'Use when a Figma section holds reference screenshots (competitors, current product, other references) with or without notes and the user wants them turned into one readable document: problem statement, objectives, shared patterns, current state, scope, directions. Triggers include "actionable pointers", "synthesize my research", "problem statement and objectives", "one place to look at all these notes", "turn my stickies into a doc", or a refs section link plus a request for directions.'
 ---
 
 # Research Synthesis
