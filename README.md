@@ -188,12 +188,11 @@ Restart Claude Code after adding it.
 
 ### Permissions
 
-The research skills run a lot of shell commands. On first use, Claude asks how you want to handle permissions:
+The research skills run dozens of shell commands: browser screenshots, a local gallery server, Figma calls. Before the heavy steps, Claude asks how you want to handle them:
 
-1. **Add to settings (recommended):** Claude writes the required permissions to `.claude/settings.json` in your project. Restart Claude Code and ask again.
-2. **Bypass mode:** restart with `claude --dangerously-skip-permissions` and ask again.
-3. **Already configured:** carry on.
-4. **Manual approvals:** approve each command as it comes (slow, but always works).
+1. **Auto mode (recommended):** press **Shift+Tab** until the mode shows **auto mode**. Claude runs commands without asking each time. No settings file, no restart.
+2. **Your own allowlist:** prefer to keep approvals on? Add `Bash(...)` rules to `.claude/settings.local.json` for the commands you trust.
+3. **Manual approvals:** approve each command as it comes. Slow, but always works.
 
 ### Updating
 
