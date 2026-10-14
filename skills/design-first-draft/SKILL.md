@@ -1,6 +1,6 @@
 ---
 name: design-first-draft
-description: Use when a research synthesis or a project brief exists and the user wants first-draft screens designed for each direction, in Figma or in code, using their design system or a chosen visual style. Triggers include "design a first draft", "build first passes for these directions", "make v1 to v4 in Figma", "turn the objectives and directions into screens", "draft the directions from my synthesis", "here is the brief, design some options", or a synthesis link plus a Figma section link.
+description: 'Use when a research synthesis or a project brief exists and the user wants first-draft screens designed for each direction, in Figma or in code, using their design system or a chosen visual style. Triggers include "design a first draft", "build first passes for these directions", "make v1 to v4 in Figma", "turn the objectives and directions into screens", "draft the directions from my synthesis", "here is the brief, design some options", or a synthesis link plus a Figma section link.'
 ---
 
 # Design First Draft

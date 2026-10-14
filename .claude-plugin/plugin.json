@@ -1,12 +1,26 @@
 {
   "name": "design-superskills",
-  "description": "Design research and organization skills: capture any site or app flow into Figma reference rows, add review observations, synthesize notes, draft directions, organize Figma screens, hand off to dev",
-  "version": "2.1.1",
+  "description": "Claude Code skills for designers: capture any site or app flow into labelled Figma reference rows, synthesize research notes into a problem and directions doc, draft first screens for each direction, organize and annotate the canvas, and hand designs off as GitHub issues.",
+  "version": "2.1.2",
   "author": {
     "name": "Shubhang Rajput"
   },
   "homepage": "https://github.com/shub-rajput/design-superskills",
   "repository": "https://github.com/shub-rajput/design-superskills",
   "license": "MIT",
-  "keywords": ["design", "ux", "screenshots", "wordpress", "figma", "research", "marketing", "synthesis", "organize", "annotations", "handoff", "mcp"]
+  "keywords": [
+    "design",
+    "ux",
+    "figma",
+    "research",
+    "screenshots",
+    "synthesis",
+    "first-draft",
+    "design-system",
+    "organize",
+    "annotations",
+    "handoff",
+    "github-issues",
+    "marketing"
+  ]
 }

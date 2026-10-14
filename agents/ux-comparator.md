@@ -1,6 +1,6 @@
 ---
 name: ux-comparator
-description: Compares multiple apps or admin UIs after individual UX reviews, returning a comparison table with ratings and verdict.
+description: 'Compares several apps or admin UIs after their individual UX reviews and returns a comparison table with ratings and a verdict. Dispatched by design-research.'
 model: inherit
 ---
 

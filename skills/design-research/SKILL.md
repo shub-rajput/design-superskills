@@ -1,6 +1,6 @@
 ---
 name: design-research
-description: Use when a designer wants screenshots of a website, web app, admin UI, or local app flow captured and placed into a Figma refs section as labelled rows, optionally with review observations next to the screens or a comparison across sources. Triggers include "screenshots into Figma", "visual references", "reference this flow", "capture these competitors", "add your observations next to them", "compare these three", or a Figma refs section link plus a request to add more screens.
+description: 'Use when a designer wants screenshots of a website, web app, admin UI, or local app flow captured and placed into a Figma refs section as labelled rows, optionally with review observations next to the screens or a comparison across sources. Triggers include "screenshots into Figma", "visual references", "reference this flow", "capture these competitors", "add your observations next to them", "compare these three", or a Figma refs section link plus a request to add more screens.'
 ---
 
 # Design Research

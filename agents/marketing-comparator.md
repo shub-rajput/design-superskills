@@ -1,6 +1,6 @@
 ---
 name: marketing-comparator
-description: Compares multiple websites after individual marketing reviews, returning a comparison table with ratings and verdict.
+description: 'Compares several public websites after their individual marketing reviews and returns a comparison table with ratings and a verdict. Dispatched by design-research.'
 model: inherit
 ---
 

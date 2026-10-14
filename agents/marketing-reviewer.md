@@ -1,6 +1,6 @@
 ---
 name: marketing-reviewer
-description: Analyzes public website screenshots for marketing and design effectiveness, returning structured annotations for gallery generation.
+description: 'Reviews screenshots of public websites through a marketing and visual design lens and returns structured observations for Figma canvas notes or the HTML gallery. Dispatched by design-research.'
 model: inherit
 ---
 

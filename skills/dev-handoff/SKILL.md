@@ -1,6 +1,6 @@
 ---
 name: dev-handoff
-description: Use when handing off Figma designs to developers as GitHub issues. Triggers include "hand off to dev", "create issues from Figma", "turn designs into tickets", "dev handoff", or when user shares a Figma URL and asks for GitHub issues to be created from it.
+description: 'Use when Figma designs need handing off to developers as GitHub issues: reads each screen and its dev notes, detects the issue type, applies the repo issue templates, and confirms the plan before creating anything. Triggers include "hand off to dev", "dev handoff", "create issues from Figma", "turn designs into tickets", or a Figma URL plus a request for GitHub issues.'
 ---
 
 # Dev Handoff

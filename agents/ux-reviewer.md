@@ -1,6 +1,6 @@
 ---
 name: ux-reviewer
-description: Analyzes app and admin UI screenshots for UX issues, returning structured annotations for canvas notes or gallery generation.
+description: 'Reviews screenshots of web apps, admin UIs and local app flows through a UX lens and returns structured observations for Figma canvas notes or the HTML gallery. Dispatched by design-research.'
 model: inherit
 ---
 

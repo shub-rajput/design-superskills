@@ -1,6 +1,6 @@
 ---
 name: design-annotations
-description: Use when adding, repositioning, or improving dev note components next to Figma design screens. Triggers include requests to add dev notes, place annotations, improve dev note copy, or update existing notes.
+description: 'Use when dev notes need adding, placing, or rewriting next to Figma design screens, using a note component from the design system or a default template. Triggers include "place my dev notes by their screens", "add dev notes to these screens", "improve the copy on these notes", "update the dev notes", or a Figma section link plus a request about notes.'
 ---
 
 # Design Annotations

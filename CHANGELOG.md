@@ -1,5 +1,12 @@
 # Changelog
 
+## 2.1.2
+
+- `research-synthesis`: fixed invalid frontmatter YAML. The unquoted colon after "document" broke parsing, which GitHub flags and strict skill loaders can reject.
+- All skill and agent descriptions are now quoted. `design-organize`, `design-annotations` and `dev-handoff` descriptions are tightened with clearer trigger phrases; agent descriptions say what they return and that design-research dispatches them.
+- Plugin and marketplace manifests share one description, the marketplace has its own description, and keywords match the current skills.
+- New `Validate` GitHub Action: checks frontmatter, matching versions across manifests and CHANGELOG, hook scripts, file paths and links in instructions, shell variables in example commands, optional private terms, and runs `claude plugin validate --strict`.
+
 ## 2.1.1
 
 - `design-first-draft`, from a field test on the brief path:
