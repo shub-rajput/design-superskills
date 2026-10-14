@@ -27,3 +27,27 @@ jobs:
           DISABLE_AUTOUPDATER: 1
           CLAUDE_CODE_DISABLE_NONESSENTIAL_TRAFFIC: 1
           npm_config_update_notifier: false
+
+  # A version bump on main publishes a GitHub release (tag vX.Y.Z, notes from CHANGELOG.md).
+  # Pushes that keep the same version are a no-op.
+  release:
+    needs: validate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Publish release for a new version
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(jq -r .version .claude-plugin/plugin.json)
+          tag="v$version"
+          if gh release view "$tag" > /dev/null 2>&1; then
+            echo "$tag is already released, nothing to do."
+            exit 0
+          fi
+          awk -v v="$version" '$0 == "## " v {f=1; next} /^## /{if (f) exit} f' CHANGELOG.md > notes.md
+          gh release create "$tag" --target "$GITHUB_SHA" --title "$tag" --notes-file notes.md
